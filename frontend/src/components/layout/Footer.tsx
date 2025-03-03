@@ -62,7 +62,7 @@ export function Footer() {
           <h3 className="text-sm font-semibold text-white">Síguenos</h3>
           <div className="mt-4 flex space-x-4">
             <a
-              href="https://github.com"
+              href="https://github.com/luisjosuecortes"
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-white transition-colors"
@@ -70,7 +70,7 @@ export function Footer() {
               <Github className="h-5 w-5" />
             </a>
             <a
-              href="https://twitter.com"
+              href="https://x.com/luiscortespn"
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-white transition-colors"
@@ -78,7 +78,7 @@ export function Footer() {
               <Twitter className="h-5 w-5" />
             </a>
             <a
-              href="https://linkedin.com"
+              href="https://www.linkedin.com/in/luis-cort%C3%A9s-penguin/"
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-white transition-colors"
@@ -86,7 +86,7 @@ export function Footer() {
               <Linkedin className="h-5 w-5" />
             </a>
             <a
-              href="https://instagram.com"
+              href="https://www.instagram.com/luiscortespenguin/"
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-white transition-colors"

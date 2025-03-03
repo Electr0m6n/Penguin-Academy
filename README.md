@@ -19,8 +19,38 @@ El proyecto utiliza una arquitectura de frontend-backend, donde el frontend est�
 Estructura del Proyecto
 ├── frontend/
 │   ├── .next/
+│   ├── node_modules/
+│   ├── public/
 │   ├── src/
+│   │   ├── app/
+│   │   │   ├── comunidad/
+│   │   │   │   ├── desafios/
+│   │   │   │   ├── foros/
+│   │   │   │   ├── grupos/
+│   │   │   │   ├── layout.tsx
+│   │   │   │   └── page.tsx
+│   │   │   ├── cursos/
+│   │   │   │   ├── [courseId]/
+│   │   │   │   └── page.tsx
+│   │   │   ├── documentacion/
+│   │   │   ├── favicon.ico
+│   │   │   ├── globals.css
+│   │   │   ├── layout.tsx
+│   │   │   ├── login/
+│   │   │   │   └── page.tsx
+│   │   │   ├── proyectos/
+│   │   │   │   ├── layout.tsx
+│   │   │   │   └── page.tsx
+│   │   │   ├── recursos/
+│   │   │   │   ├── layout.tsx
+│   │   │   │   └── page.tsx
+│   │   │   └── registro/
+│   │   │       └── page.tsx
 │   │   ├── components/
+│   │   │   ├── auth/
+│   │   │   │   ├── AuthBackground.tsx
+│   │   │   │   ├── LoginForm.tsx
+│   │   │   │   └── RegisterForm.tsx
 │   │   │   ├── features/
 │   │   │   │   ├── BackgroundPatterns.tsx
 │   │   │   │   ├── Benefits.tsx
@@ -36,43 +66,25 @@ Estructura del Proyecto
 │   │   │   ├── layout/
 │   │   │   │   ├── Footer.tsx
 │   │   │   │   └── Header.tsx
-│   │   │   ├── ui/
-│   │   │   │   ├── BackgroundLines.tsx
-│   │   │   │   ├── Header.tsx
-│   │   │   │   └── StarField.tsx
-│   │   │   └── auth/
-│   │   │       ├── AuthBackground.tsx
-│   │   │       ├── LoginForm.tsx
-│   │   │       └── RegisterForm.tsx
+│   │   │   └── ui/
+│   │   │       ├── BackgroundLines.tsx
+│   │   │       └── StarField.tsx
 │   │   ├── data/
 │   │   │   └── courses.ts
 │   │   ├── types/
 │   │   │   └── course.ts
-│   │   └── app/
-│   │       ├── documentacion/
-│   │       ├── favicon.ico
-│   │       ├── globals.css
-│   │       ├── layout.tsx
-│   │       ├── login/
-│   │       │   └── page.tsx
-│   │       ├── page.tsx
-│   │       ├── proyectos/
-│   │       ├── recursos/
-│   │       ├── registro/
-│   │       │   └── page.tsx
-│   │       ├── comunidad/
-│   │       │   ├── desafios/
-│   │       │   ├── foros/
-│   │       │   ├── grupos/
-│   │       │   ├── layout.tsx
-│   │       │   └── page.tsx
-│   │       └── cursos/
-│   │           ├── [courseId]/
-│   │           └── page.tsx
+│   │   ├── tailwind.config.ts
+│   │   ├── tsconfig.json
+│   │   ├── package.json
+│   │   ├── package-lock.json
+│   │   ├── postcss.config.mjs
+│   │   ├── eslint.config.mjs
+│   │   ├── next-env.d.ts
+│   │   ├── next.config.js
+│   │   └── next.config.ts
 └── backend/
+    └── .gitkeep
 ```
-- **frontend/**: Contiene el código del frontend.
-- **backend/**: Actualmente vacío, pero se espera que contenga el código del backend.
 
 ### Configuración de Supabase
 Para utilizar Supabase en este proyecto, asegúrate de tener un archivo `.env.local` en la raíz del proyecto con las siguientes variables:
@@ -83,7 +95,7 @@ SUPABASE_SERVICE_ROLE_KEY=tu_clave_de_servicio
 ```
 
 ### Descripción de Conexiones y Relaciones
-La comunicación entre el frontend y el backend se realizará a través de API REST o GraphQL. Se gestionará el estado en el cliente utilizando herramientas como Redux o Context API.
+La comunicación entre el frontend y el backend se realizará a través de API REST o GraphQL. Se gestionará el estado en el cliente utilizando herramientas como Redux o Context API. El flujo de datos entre la base de datos y el servidor incluirá autenticación y autorización, y se integrarán servicios externos para pagos y notificaciones.
 
 ### Creación de Ramas Lógicas
 #### Rama Frontend
@@ -92,13 +104,15 @@ La comunicación entre el frontend y el backend se realizará a través de API R
 
 #### Rama Backend
 - **Descripción**: Contendrá los endpoints y la lógica de negocio.
-- **Estructura**: Controladores, Modelos, Middleware.
+- **Estructura**: Actualmente vacío, pero se espera que contenga controladores, modelos y middleware.
 
 #### Rama Base de Datos
 - **Descripción**: Se espera que contenga esquemas y relaciones.
+- **Estructura**: Esquemas, migraciones, seeds.
 
 #### Rama Integraciones
 - **Descripción**: Integraciones con servicios externos y APIs de terceros.
+- **Estructura**: APIs de pago, autenticación, notificaciones.
 
 ### Detalles Técnicos y Sugerencias de Mejora
 Se recomienda definir la estructura del backend y las integraciones con APIs de terceros. Mantener el documento actualizado a medida que se realicen cambios en la estructura del proyecto. 
