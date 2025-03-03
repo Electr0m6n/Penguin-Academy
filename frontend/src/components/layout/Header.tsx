@@ -4,6 +4,11 @@ import Link from 'next/link'
 import { Menu, X, Brain, Sparkles, Users, BookOpen, Terminal } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 const navigation = [
   { 
@@ -35,14 +40,26 @@ const navigation = [
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(true)
+  const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
     const checkScroll = () => {
       setIsScrolled(window.scrollY > 50)
     }
     
+    const fetchSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        setUser(session.user)
+        console.log('Usuario autenticado:', session.user)
+      } else {
+        console.log('No hay sesión activa')
+      }
+    }
+
     if (typeof window !== 'undefined') {
       checkScroll()
+      fetchSession()
       window.addEventListener('scroll', checkScroll)
       return () => window.removeEventListener('scroll', checkScroll)
     }
@@ -97,21 +114,29 @@ export function Header() {
             ))}
           </div>
           <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:gap-x-4">
-            <Link
-              href="/registro"
-              className="group relative px-4 py-2 text-sm font-semibold text-white/80 hover:text-white transition-colors"
-            >
-              <span className="relative">
-                Registro
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-cyan-500 group-hover:w-full transition-all duration-300"></span>
-              </span>
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-full px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 hover:from-emerald-600 hover:via-emerald-500 hover:to-teal-500 transition-all duration-300 transform hover:scale-105 hover:shadow-[0_0_20px_rgba(16,185,129,0.5)]"
-            >
-              Iniciar Sesión
-            </Link>
+            {user ? (
+              <Link
+                href="/perfil"
+                className="group relative px-4 py-2 text-sm font-semibold text-white/80 hover:text-white transition-colors"
+              >
+                <span className="relative">Perfil</span>
+              </Link>
+            ) : (
+              <>  
+                <Link
+                  href="/registro"
+                  className="group relative px-4 py-2 text-sm font-semibold text-white/80 hover:text-white transition-colors"
+                >
+                  <span className="relative">Registro</span>
+                </Link>
+                <Link
+                  href="/login"
+                  className="rounded-full px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 hover:from-emerald-600 hover:via-emerald-500 hover:to-teal-500 transition-all duration-300 transform hover:scale-105 hover:shadow-[0_0_20px_rgba(16,185,129,0.5)]"
+                >
+                  Iniciar Sesión
+                </Link>
+              </>
+            )}
           </div>
         </div>
 

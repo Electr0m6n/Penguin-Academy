@@ -23,37 +23,55 @@ export default function LoginPage() {
 
   const handleLogin = async (identifier: string, password: string) => {
     if (!identifier || !password) {
-        setErrorMessage('Por favor, completa todos los campos.');
-        return;
+      setErrorMessage('Por favor, completa todos los campos.');
+      return;
     }
 
     setLoading(true);
     console.log('Intentando iniciar sesión con:', identifier, password);
 
-    const { data: userData, error: userError } = await supabase
+    // Primero, intentamos iniciar sesión con el correo electrónico
+    const { error: emailError } = await supabase.auth.signInWithPassword({
+      email: identifier,
+      password: password,
+    });
+
+    if (emailError) {
+      // Si falla, intentamos iniciar sesión con el nombre de usuario
+      const { data, error: usernameError } = await supabase
         .from('users')
-        .select('*')
-        .or(`username.eq.${identifier},email.eq.${identifier}`)
+        .select('email')
+        .eq('username', identifier)
         .single();
 
-    if (userError || !userData) {
-        console.error('Error al buscar usuario por nombre de usuario o correo electrónico:', userError ? userError.message : 'Usuario no encontrado.');
-        setErrorMessage('Nombre de usuario o correo electrónico no encontrado.');
+      if (usernameError || !data) {
+        console.error('Error al iniciar sesión:', usernameError ? usernameError.message : 'Nombre de usuario no encontrado.');
+        setErrorMessage('Nombre de usuario o contraseña incorrectos.');
         setLoading(false);
         return;
-    }
+      }
 
-    // Verificar la contraseña
-    if (userData.password !== password) {
-        setErrorMessage('Contraseña incorrecta.');
+      // Si encontramos el correo asociado al nombre de usuario, intentamos iniciar sesión
+      const { error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: password,
+      });
+
+      if (error) {
+        if (error.message === 'Email not confirmed') {
+          setErrorMessage('Por favor, confirma tu correo electrónico antes de iniciar sesión.');
+        } else {
+          console.error('Error al iniciar sesión:', error.message);
+          setErrorMessage('Nombre de usuario o contraseña incorrectos.');
+        }
         setLoading(false);
         return;
+      }
     }
 
-    // Si las credenciales son correctas
     setLoading(false);
     setSuccessMessage('Usuario autenticado exitosamente.');
-    console.log('Usuario autenticado:', userData);
+    console.log('Usuario autenticado');
     window.location.href = '/'; // Cambia esto a la ruta deseada
   };
 

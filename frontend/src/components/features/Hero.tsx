@@ -72,8 +72,7 @@ export function Hero() {
 
       {/* Elementos decorativos - solo visibles en desktop */}
       <div className="absolute inset-0 hidden md:block">
-        <div className="absolute inset-0 stars-pattern bg-[url('/patterns/stars.svg')] bg-repeat opacity-10 animate-twinkle"></div>
-        <div className="absolute inset-0 stars-pattern-small bg-[url('/patterns/stars-small.svg')] bg-repeat opacity-20 animate-twinkle-slow"></div>
+        {/* <div className="absolute inset-0 stars-pattern bg-[url('/patterns/stars.svg')] bg-repeat opacity-10 animate-twinkle"></div> */}
       </div>
 
       {/* Gradiente de fondo */}

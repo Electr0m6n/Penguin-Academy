@@ -30,6 +30,40 @@ export default function RegisterPage() {
       return
     }
 
+    // Verificar unicidad del nombre de usuario
+    const { data: usernameData, error: usernameError } = await supabase
+      .from('users')
+      .select('username')
+      .eq('username', username);
+
+    if (usernameError) {
+      setErrorMessage('Error al verificar el nombre de usuario.');
+      console.error('Error al verificar el nombre de usuario:', usernameError.message);
+      return;
+    }
+
+    if (usernameData && usernameData.length > 0) {
+      setErrorMessage('El nombre de usuario ya está en uso. Por favor, elige otro.');
+      return;
+    }
+
+    // Verificar unicidad del correo electrónico
+    const { data: emailData, error: emailError } = await supabase
+      .from('users')
+      .select('email')
+      .eq('email', email);
+
+    if (emailError) {
+      setErrorMessage('Error al verificar el correo electrónico.');
+      console.error('Error al verificar el correo electrónico:', emailError.message);
+      return;
+    }
+
+    if (emailData && emailData.length > 0) {
+      setErrorMessage('El correo electrónico ya está registrado. Por favor, elige otro.');
+      return;
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
