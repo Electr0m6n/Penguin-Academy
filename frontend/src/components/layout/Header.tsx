@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Menu, X, Brain, Sparkles, Users, BookOpen, Terminal } from 'lucide-react'
+import { Menu, X, Brain, Sparkles, Users, Terminal, Keyboard } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { createClient, User } from '@supabase/supabase-js'
@@ -18,15 +18,15 @@ const navigation = [
     gradient: 'from-red-500 to-rose-500'
   },
   { 
-    name: 'Proyectos', 
-    href: '/proyectos', 
+    name: 'Problemas', 
+    href: '/problemas', 
     icon: Terminal, 
     gradient: 'from-violet-500 to-purple-500'
   },
   { 
-    name: 'Recursos', 
-    href: '/recursos', 
-    icon: BookOpen, 
+    name: 'Typing', 
+    href: '/typing', 
+    icon: Keyboard, 
     gradient: 'from-emerald-500 to-green-500'
   },
   { 

@@ -53,12 +53,12 @@ frontend/
 │   │   │   └── page.tsx      # Página de inicio de sesión
 │   │   ├── perfil/          
 │   │   │   └── page.tsx      # Página de perfil de usuario
-│   │   ├── proyectos/       
-│   │   │   ├── layout.tsx    # Layout de proyectos
-│   │   │   └── page.tsx      # Página de proyectos
-│   │   ├── recursos/        
-│   │   │   ├── layout.tsx    # Layout de recursos
-│   │   │   └── page.tsx      # Página de recursos
+│   │   ├── problemas/       
+│   │   │   ├── layout.tsx    # Layout de problemas
+│   │   │   └── page.tsx      # Página de problemas
+│   │   ├── typing/        
+│   │   │   ├── layout.tsx    # Layout de typing
+│   │   │   └── page.tsx      # Página de typing
 │   │   ├── registro/        
 │   │   │   └── page.tsx      # Página de registro
 │   │   ├── favicon.ico       # Favicon del sitio
@@ -126,14 +126,19 @@ backend/                    # Servicios de backend (Supabase)
 #### 3. Comunidad
 - Foros de discusión
 - Grupos de estudio
-- Proyectos colaborativos
 - Desafíos y competencias
 
-#### 4. Recursos Educativos
-- Documentación técnica
-- Tutoriales
-- Materiales descargables
-- Herramientas de desarrollo
+#### 4. Typing
+- Práctica de velocidad de escritura
+- Medición de palabras por minuto (WPM)
+- Análisis de precisión
+- Ejercicios personalizados
+
+#### 5. Problemas de IA
+- Desafíos prácticos
+- Ejercicios de programación
+- Casos de estudio
+- Competencias
 
 ### Integraciones y Servicios
 
