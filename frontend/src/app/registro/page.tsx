@@ -93,7 +93,8 @@ export default function RegisterPage() {
     } else {
       setSuccessMessage('Usuario creado exitosamente.')
       console.log('Usuario creado:', data.user)
-      window.location.href = '/'
+      // Redirigir a la página de login con un parámetro de consulta para mostrar un mensaje de éxito
+      window.location.href = '/login?registered=true'
     }
   }
 

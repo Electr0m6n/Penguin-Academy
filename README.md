@@ -1,118 +1,201 @@
 # Penguin Academy
 
-## Estructura del Proyecto de Cursos en Línea
+## Plataforma de Aprendizaje en Inteligencia Artificial
 
-### Contexto y Descripción General del Proyecto
-Este proyecto es una página de cursos en línea que incluye secciones como catálogo de cursos, inscripción, perfil de usuario, administración de contenidos y pagos. El propósito principal del sitio es ofrecer una plataforma accesible para que los usuarios puedan buscar, inscribirse y gestionar sus cursos. El público objetivo son estudiantes y profesionales que buscan mejorar sus habilidades a través de cursos en línea.
+### Contexto y Descripción General
+Penguin Academy es una plataforma educativa especializada en Inteligencia Artificial que ofrece una experiencia de aprendizaje integral. El proyecto está diseñado para proporcionar cursos, recursos y una comunidad activa para estudiantes y profesionales interesados en IA.
 
-### Funcionalidades Clave
-- Búsqueda de cursos
-- Filtrado de cursos
-- Sistema de recomendaciones
+#### Propósito Principal
+- Ofrecer educación de alta calidad en IA
+- Facilitar el aprendizaje práctico mediante proyectos reales
+- Crear una comunidad colaborativa de aprendizaje
+- Proporcionar recursos y herramientas especializadas
 
-### Arquitectura
-El proyecto utiliza una arquitectura de frontend-backend, donde el frontend está construido con Next.js y el backend está diseñado para ser implementado, aunque actualmente el directorio está vacío. Se prevé la integración con APIs de terceros para pagos y autenticación.
+#### Público Objetivo
+- Estudiantes de tecnología e ingeniería
+- Profesionales en transición a IA
+- Desarrolladores interesados en machine learning
+- Entusiastas de la tecnología
+
+### Arquitectura del Sistema
+
+#### Stack Tecnológico
+- **Frontend**: Next.js 14 (App Router), React, TypeScript
+- **Estilizado**: TailwindCSS, Framer Motion
+- **Backend**: Supabase (Backend as a Service)
+- **Autenticación**: Supabase Auth
+- **Base de Datos**: PostgreSQL (Supabase)
+- **Despliegue**: Vercel
 
 ### Estructura del Proyecto
-#### Estructura de Carpetas y Archivos
+
 ```
-Estructura del Proyecto
-├── frontend/
-│   ├── .next/
-│   ├── node_modules/
-│   ├── public/
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── comunidad/
-│   │   │   │   ├── desafios/
-│   │   │   │   ├── foros/
-│   │   │   │   ├── grupos/
-│   │   │   │   ├── layout.tsx
-│   │   │   │   └── page.tsx
-│   │   │   ├── cursos/
-│   │   │   │   ├── [courseId]/
-│   │   │   │   └── page.tsx
-│   │   │   ├── documentacion/
-│   │   │   ├── favicon.ico
-│   │   │   ├── globals.css
-│   │   │   ├── layout.tsx
-│   │   │   ├── login/
-│   │   │   │   └── page.tsx
-│   │   │   ├── proyectos/
-│   │   │   │   ├── layout.tsx
-│   │   │   │   └── page.tsx
-│   │   │   ├── recursos/
-│   │   │   │   ├── layout.tsx
-│   │   │   │   └── page.tsx
-│   │   │   └── registro/
-│   │   │       └── page.tsx
-│   │   ├── components/
-│   │   │   ├── auth/
-│   │   │   │   ├── AuthBackground.tsx
-│   │   │   │   ├── LoginForm.tsx
-│   │   │   │   └── RegisterForm.tsx
-│   │   │   ├── features/
-│   │   │   │   ├── BackgroundPatterns.tsx
-│   │   │   │   ├── Benefits.tsx
-│   │   │   │   ├── FAQ.tsx
-│   │   │   │   ├── Features.tsx
-│   │   │   │   ├── Hero.tsx
-│   │   │   │   ├── RotatingCube.tsx
-│   │   │   │   ├── StarField.tsx
-│   │   │   │   ├── Testimonials.tsx
-│   │   │   │   └── courses/
-│   │   │   │       ├── CourseList.tsx
-│   │   │   │       └── CoursePreview.tsx
-│   │   │   ├── layout/
-│   │   │   │   ├── Footer.tsx
-│   │   │   │   └── Header.tsx
-│   │   │   └── ui/
-│   │   │       ├── BackgroundLines.tsx
-│   │   │       └── StarField.tsx
-│   │   ├── data/
-│   │   │   └── courses.ts
-│   │   ├── types/
-│   │   │   └── course.ts
-│   │   ├── tailwind.config.ts
-│   │   ├── tsconfig.json
-│   │   ├── package.json
-│   │   ├── package-lock.json
-│   │   ├── postcss.config.mjs
-│   │   ├── eslint.config.mjs
-│   │   ├── next-env.d.ts
-│   │   ├── next.config.js
-│   │   └── next.config.ts
-└── backend/
-    └── .gitkeep
+frontend/
+├── .next/                      # Directorio de build de Next.js
+├── public/                     # Archivos estáticos públicos
+├── src/
+│   ├── app/                    # Rutas y páginas (Next.js App Router)
+│   │   ├── comunidad/         # Sección de comunidad
+│   │   │   ├── desafios/     
+│   │   │   │   └── page.tsx  # Página de desafíos
+│   │   │   ├── foros/        
+│   │   │   │   └── page.tsx  # Página de foros
+│   │   │   ├── grupos/       
+│   │   │   │   └── page.tsx  # Página de grupos
+│   │   │   └── page.tsx      # Página principal de comunidad
+│   │   ├── cursos/           
+│   │   │   ├── [courseId]/   # Ruta dinámica para cursos
+│   │   │   │   └── page.tsx  # Página de detalle de curso
+│   │   │   └── page.tsx      # Catálogo de cursos
+│   │   ├── documentacion/    
+│   │   │   └── page.tsx      # Documentación técnica
+│   │   ├── login/           
+│   │   │   └── page.tsx      # Página de inicio de sesión
+│   │   ├── perfil/          
+│   │   │   └── page.tsx      # Página de perfil de usuario
+│   │   ├── proyectos/       
+│   │   │   ├── layout.tsx    # Layout de proyectos
+│   │   │   └── page.tsx      # Página de proyectos
+│   │   ├── recursos/        
+│   │   │   ├── layout.tsx    # Layout de recursos
+│   │   │   └── page.tsx      # Página de recursos
+│   │   ├── registro/        
+│   │   │   └── page.tsx      # Página de registro
+│   │   ├── favicon.ico       # Favicon del sitio
+│   │   ├── globals.css       # Estilos globales
+│   │   ├── layout.tsx        # Layout principal
+│   │   └── page.tsx          # Página principal
+│   ├── components/           # Componentes reutilizables
+│   │   ├── auth/            # Componentes de autenticación
+│   │   │   ├── AuthBackground.tsx
+│   │   │   ├── LoginForm.tsx
+│   │   │   └── RegisterForm.tsx
+│   │   ├── features/        # Componentes principales
+│   │   │   ├── BackgroundPatterns.tsx
+│   │   │   ├── Benefits.tsx
+│   │   │   ├── FAQ.tsx
+│   │   │   ├── Features.tsx
+│   │   │   ├── Hero.tsx
+│   │   │   ├── RotatingCube.tsx
+│   │   │   ├── StarField.tsx
+│   │   │   ├── Testimonials.tsx
+│   │   │   └── courses/
+│   │   │       ├── CourseList.tsx
+│   │   │       └── CoursePreview.tsx
+│   │   ├── layout/          # Componentes de estructura
+│   │   │   ├── Footer.tsx
+│   │   │   └── Header.tsx
+│   │   └── ui/              # Componentes de interfaz
+│   │       ├── BackgroundLines.tsx
+│   │       └── StarField.tsx
+│   ├── data/                # Datos estáticos
+│   │   └── courses.ts       # Datos de cursos
+│   └── types/               # Definiciones de tipos
+│       └── course.ts        # Tipos para cursos
+├── node_modules/            # Dependencias
+├── .env.local              # Variables de entorno locales
+├── .gitignore              # Configuración de Git
+├── eslint.config.mjs       # Configuración de ESLint
+├── next-env.d.ts           # Tipos de Next.js
+├── next.config.js          # Configuración de Next.js
+├── next.config.ts          # Configuración tipada de Next.js
+├── package-lock.json       # Lock de dependencias
+├── package.json            # Configuración del proyecto
+├── postcss.config.mjs      # Configuración de PostCSS
+├── tailwind.config.ts      # Configuración de Tailwind
+└── tsconfig.json          # Configuración de TypeScript
+
+backend/                    # Servicios de backend (Supabase)
+└── .gitkeep               # Marcador de directorio
 ```
 
-### Configuración de Supabase
-Para utilizar Supabase en este proyecto, asegúrate de tener un archivo `.env.local` en la raíz del proyecto con las siguientes variables:
-```
-NEXT_PUBLIC_SUPABASE_URL=https://tu_url_de_supabase
-NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_clave_anonima
-SUPABASE_SERVICE_ROLE_KEY=tu_clave_de_servicio
-```
+### Módulos Principales
 
-### Descripción de Conexiones y Relaciones
-La comunicación entre el frontend y el backend se realizará a través de API REST o GraphQL. Se gestionará el estado en el cliente utilizando herramientas como Redux o Context API. El flujo de datos entre la base de datos y el servidor incluirá autenticación y autorización, y se integrarán servicios externos para pagos y notificaciones.
+#### 1. Sistema de Autenticación
+- Implementado con Supabase Auth
+- Soporte para email/password
+- Integración con proveedores OAuth (Google, GitHub)
+- Gestión de sesiones y tokens
 
-### Creación de Ramas Lógicas
-#### Rama Frontend
-- **Descripción**: Contiene todos los componentes y servicios del frontend.
-- **Estructura**: Se detalla en la sección anterior.
+#### 2. Gestión de Cursos
+- Catálogo de cursos interactivo
+- Sistema de progreso
+- Contenido multimedia
+- Evaluaciones y ejercicios
 
-#### Rama Backend
-- **Descripción**: Contendrá los endpoints y la lógica de negocio.
-- **Estructura**: Actualmente vacío, pero se espera que contenga controladores, modelos y middleware.
+#### 3. Comunidad
+- Foros de discusión
+- Grupos de estudio
+- Proyectos colaborativos
+- Desafíos y competencias
 
-#### Rama Base de Datos
-- **Descripción**: Se espera que contenga esquemas y relaciones.
-- **Estructura**: Esquemas, migraciones, seeds.
+#### 4. Recursos Educativos
+- Documentación técnica
+- Tutoriales
+- Materiales descargables
+- Herramientas de desarrollo
 
-#### Rama Integraciones
-- **Descripción**: Integraciones con servicios externos y APIs de terceros.
-- **Estructura**: APIs de pago, autenticación, notificaciones.
+### Integraciones y Servicios
 
-### Detalles Técnicos y Sugerencias de Mejora
-Se recomienda definir la estructura del backend y las integraciones con APIs de terceros. Mantener el documento actualizado a medida que se realicen cambios en la estructura del proyecto. 
+#### Supabase
+- **Autenticación**: Gestión de usuarios y sesiones
+- **Base de Datos**: Almacenamiento de datos de usuarios y cursos
+- **Storage**: Almacenamiento de archivos y recursos
+- **Realtime**: Funcionalidades en tiempo real para foros y chat
+
+### Flujos de Datos
+
+#### Autenticación
+1. Usuario ingresa credenciales
+2. Supabase Auth valida y genera token
+3. Token almacenado en cliente
+4. Acceso a recursos protegidos
+
+#### Cursos
+1. Carga inicial desde Supabase
+2. Caché local para rendimiento
+3. Sincronización de progreso
+4. Actualización en tiempo real
+
+### Mejoras Propuestas
+
+#### Corto Plazo
+1. Implementar sistema de búsqueda avanzada
+2. Mejorar la experiencia móvil
+3. Agregar más integraciones sociales
+
+#### Mediano Plazo
+1. Sistema de gamificación
+2. Marketplace de recursos
+3. API pública para desarrolladores
+
+#### Largo Plazo
+1. Sistema de mentorías
+2. Plataforma de certificaciones
+3. Herramientas de IA personalizadas
+
+### Consideraciones Técnicas
+
+#### Rendimiento
+- Optimización de imágenes y assets
+- Implementación de SSR/SSG
+- Lazy loading de componentes
+
+#### Seguridad
+- Validación de datos en cliente y servidor
+- Protección contra XSS y CSRF
+- Encriptación de datos sensibles
+
+#### Escalabilidad
+- Arquitectura modular
+- Patrones de diseño escalables
+- Cache estratégico
+
+### Contribución
+1. Fork del repositorio
+2. Crear rama feature/fix
+3. Commit de cambios
+4. Pull request a main
+
+### Licencia
+MIT License - Ver archivo LICENSE para detalles 

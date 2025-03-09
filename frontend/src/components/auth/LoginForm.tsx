@@ -2,18 +2,27 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Lock, Github, AlertCircle, User } from 'lucide-react'
+import { Lock, Github, AlertCircle, User, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 
 interface LoginFormProps {
   onSubmit: (email: string, password: string) => Promise<void>
+  onPasswordRecovery: (email: string) => Promise<void>
   onGoogleLogin: () => Promise<void>
   onGithubLogin: () => Promise<void>
   errorMessage?: string | null;
+  successMessage?: string | null;
 }
 
-export function LoginForm({ onSubmit, onGoogleLogin, onGithubLogin, errorMessage }: LoginFormProps) {
+export function LoginForm({ 
+  onSubmit, 
+  onPasswordRecovery, 
+  onGoogleLogin, 
+  onGithubLogin, 
+  errorMessage, 
+  successMessage 
+}: LoginFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -26,6 +35,20 @@ export function LoginForm({ onSubmit, onGoogleLogin, onGithubLogin, errorMessage
     try {
       setIsLoading(true)
       await onSubmit(email, password)
+    } catch {
+      // Handle error
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handlePasswordRecovery = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (isLoading) return
+
+    try {
+      setIsLoading(true)
+      await onPasswordRecovery(email)
     } catch {
       // Handle error
     } finally {
@@ -91,6 +114,17 @@ export function LoginForm({ onSubmit, onGoogleLogin, onGithubLogin, errorMessage
               </p>
             </div>
 
+            {successMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6 p-4 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center gap-3 text-green-400"
+              >
+                <CheckCircle className="h-5 w-5 flex-shrink-0" />
+                <p className="text-sm">{successMessage}</p>
+              </motion.div>
+            )}
+
             {errorMessage && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
@@ -104,7 +138,7 @@ export function LoginForm({ onSubmit, onGoogleLogin, onGithubLogin, errorMessage
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-2">Nombre de usuario</label>
+                <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-2">Correo o nombre de usuario</label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <input
@@ -116,7 +150,7 @@ export function LoginForm({ onSubmit, onGoogleLogin, onGithubLogin, errorMessage
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="block w-full rounded-lg py-2 pl-10 pr-3 bg-white/5 border border-white/10 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-opacity-20 transition-all"
-                    placeholder="Tu nombre de usuario"
+                    placeholder="Tu correo o nombre de usuario"
                   />
                 </div>
               </div>
@@ -159,12 +193,13 @@ export function LoginForm({ onSubmit, onGoogleLogin, onGithubLogin, errorMessage
                   </label>
                 </div>
 
-                <Link
-                  href="/recuperar-password"
+                <button
+                  type="button"
+                  onClick={handlePasswordRecovery}
                   className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
                 >
                   ¿Olvidaste tu contraseña?
-                </Link>
+                </button>
               </div>
 
               <button
