@@ -5,11 +5,5 @@
   "framework": "nextjs",
   "rewrites": [
     { "source": "/(.*)", "destination": "/frontend/$1" }
-  ],
-  "projectSettings": {
-    "framework": "nextjs",
-    "buildCommand": "cd frontend && npm run build",
-    "devCommand": "cd frontend && npm run dev",
-    "rootDirectory": "frontend"
-  }
+  ]
 } 
