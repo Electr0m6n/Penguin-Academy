@@ -22,6 +22,7 @@ Penguin Academy es una plataforma educativa especializada en Inteligencia Artifi
 #### Stack Tecnológico
 - **Frontend**: Next.js 14 (App Router), React, TypeScript
 - **Estilizado**: TailwindCSS, Framer Motion
+- **Visualización de datos**: Chart.js, React-ChartJS-2
 - **Backend**: Supabase (Backend as a Service)
 - **Autenticación**: Supabase Auth
 - **Base de Datos**: PostgreSQL (Supabase)
@@ -133,6 +134,11 @@ backend/                    # Servicios de backend (Supabase)
 - Medición de palabras por minuto (WPM)
 - Análisis de precisión
 - Ejercicios personalizados
+- Gráficas de rendimiento en tiempo real
+- Estadísticas detalladas (caracteres correctos/incorrectos/perdidos)
+- Análisis de consistencia
+- Selección de duración de prueba (15s, 30s, 60s, 120s)
+- Temas visuales personalizables
 
 #### 5. Problemas de IA
 - Desafíos prácticos

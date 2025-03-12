@@ -1,0 +1,31 @@
+// Textos de práctica para cada tiempo (más cortos o más largos según el tiempo)
+export const timeTexts = {
+  15: [
+    "La inteligencia artificial avanza rápidamente. Los algoritmos modernos pueden procesar enormes cantidades de datos. La tecnología transforma nuestras vidas cada día.",
+    "El aprendizaje automático es esencial en la era digital actual. Las máquinas pueden ahora reconocer patrones complejos. Los desarrolladores crean sistemas cada vez más sofisticados.",
+    "La programación requiere lógica y creatividad. Los lenguajes evolucionan constantemente. Los proyectos exitosos combinan buena planificación y adaptabilidad.",
+  ],
+  30: [
+    "La inteligencia artificial es una rama de la informática que busca crear sistemas capaces de realizar tareas que normalmente requieren inteligencia humana. El aprendizaje profundo ha revolucionado este campo en la última década. Las aplicaciones prácticas son cada vez más comunes en nuestra vida diaria.",
+    "El aprendizaje automático permite a las computadoras mejorar automáticamente a través de la experiencia sin ser programadas explícitamente. Los algoritmos analizan datos y reconocen patrones para hacer predicciones. Este enfoque ha transformado campos como la medicina, las finanzas y el transporte.",
+    "El desarrollo de software es un proceso metódico que combina pensamiento lógico y creatividad para resolver problemas. La colaboración efectiva entre equipos es fundamental para proyectos exitosos. Las metodologías ágiles han cambiado la forma en que se construye software en todo el mundo.",
+  ],
+  60: [
+    "La inteligencia artificial es una rama de la informática que busca crear sistemas capaces de realizar tareas que normalmente requieren inteligencia humana. El aprendizaje profundo, una subcategoría del machine learning, utiliza redes neuronales con muchas capas para analizar diversos aspectos de los datos. Los avances recientes han permitido aplicaciones prácticas en reconocimiento de voz, visión por computadora y procesamiento de lenguaje natural que antes parecían imposibles.",
+    "El aprendizaje automático permite a las computadoras mejorar automáticamente a través de la experiencia sin ser programadas explícitamente. Los algoritmos de machine learning construyen modelos matemáticos basados en datos de muestra para hacer predicciones o decisiones sin ser programados para realizar la tarea específica. Esta tecnología está transformando industrias enteras, desde la atención médica hasta los servicios financieros y el transporte.",
+    "Las redes neuronales son un conjunto de algoritmos diseñados para reconocer patrones, inspirados en el funcionamiento del cerebro humano. Estas redes consisten en capas de nodos interconectados que procesan información y transmiten señales entre sí, similar a las neuronas en el cerebro biológico. Su capacidad para identificar patrones complejos ha revolucionado campos como el reconocimiento de imágenes y la traducción automática.",
+  ],
+  120: [
+    "La inteligencia artificial es una rama de la informática que busca crear sistemas capaces de realizar tareas que normalmente requieren inteligencia humana. El aprendizaje profundo, una subcategoría del machine learning, utiliza redes neuronales con muchas capas para analizar diversos aspectos de los datos. Los avances recientes han permitido aplicaciones prácticas en reconocimiento de voz, visión por computadora y procesamiento de lenguaje natural que antes parecían imposibles. Investigadores de todo el mundo continúan expandiendo las fronteras de lo que estas tecnologías pueden lograr, abriendo posibilidades que antes solo existían en la ciencia ficción.",
+    "El aprendizaje automático permite a las computadoras mejorar automáticamente a través de la experiencia sin ser programadas explícitamente. Los algoritmos de machine learning construyen modelos matemáticos basados en datos de muestra para hacer predicciones o decisiones sin ser programados para realizar la tarea específica. Esta tecnología está transformando industrias enteras, desde la atención médica hasta los servicios financieros y el transporte. La capacidad de procesar y aprender de enormes conjuntos de datos ha cambiado fundamentalmente la forma en que abordamos problemas complejos en el mundo moderno.",
+    "Las redes neuronales son un conjunto de algoritmos diseñados para reconocer patrones, inspirados en el funcionamiento del cerebro humano. Estas redes consisten en capas de nodos interconectados que procesan información y transmiten señales entre sí, similar a las neuronas en el cerebro biológico. Su capacidad para identificar patrones complejos ha revolucionado campos como el reconocimiento de imágenes y la traducción automática. A medida que aumenta la potencia de procesamiento disponible, estas redes se vuelven más profundas y sofisticadas, logrando resultados que superan incluso a expertos humanos en tareas específicas.",
+  ]
+};
+
+// Textos originales
+export const typingTexts = [
+  'La inteligencia artificial es una rama de la informática que busca crear sistemas capaces de realizar tareas que normalmente requieren inteligencia humana. El aprendizaje profundo, una subcategoría del machine learning, utiliza redes neuronales con muchas capas para analizar diversos aspectos de los datos.',
+  'El aprendizaje automático permite a las computadoras mejorar automáticamente a través de la experiencia sin ser programadas explícitamente. Los algoritmos de machine learning construyen modelos matemáticos basados en datos de muestra para hacer predicciones o decisiones sin ser programados para realizar la tarea específica.',
+  'Las redes neuronales son un conjunto de algoritmos diseñados para reconocer patrones, inspirados en el funcionamiento del cerebro humano. Estas redes consisten en capas de nodos interconectados que procesan información y transmiten señales entre sí, similar a las neuronas en el cerebro biológico.',
+  'El procesamiento del lenguaje natural es un campo de la IA que se centra en la interacción entre las computadoras y el lenguaje humano. NLP combina lingüística computacional, aprendizaje automático y aprendizaje profundo para permitir que las máquinas procesen, analicen y generen lenguaje humano de manera significativa.'
+]; 
