@@ -35,6 +35,7 @@ export function useTheme(initialTheme: string = 'stealth') {
       correct: theme.colors[0],
       cursor: theme.colors[1],
       error: theme.colors[2],
+      typed: theme.colors[2],
       background: theme.background
     };
   }, [currentTheme]); // Solo se recrea cuando cambia currentTheme

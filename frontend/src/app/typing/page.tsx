@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import { Line } from 'react-chartjs-2'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { Keyboard, Crown, User, Trophy } from 'lucide-react'
+import { Keyboard, Crown, User, Trophy, LineChart } from 'lucide-react'
 
 // Hooks personalizados
 import { useTheme } from './hooks/useTheme'
@@ -19,6 +19,9 @@ import { Leaderboard } from './components/Leaderboard'
 export default function TypingPage() {
   // Estado para controlar la hidratación
   const [isHydrated, setIsHydrated] = useState(false);
+  
+  // Estado para controlar la visualización de la gráfica en tiempo real
+  const [showRealTimeChart, setShowRealTimeChart] = useState(false);
   
   // Hook de tema
   const {
@@ -55,7 +58,8 @@ export default function TypingPage() {
     calculateCurrentWPM,
     calculateFinalAccuracy,
     handleReset,
-    handleSubmitScore
+    handleSubmitScore,
+    calculateAccuracy
   } = useTypingTest();
   
   // Hook de Supabase
@@ -79,6 +83,14 @@ export default function TypingPage() {
   // Detectar cuando la hidratación ha completado
   useEffect(() => {
     setIsHydrated(true);
+    
+    // Cargar la preferencia de la gráfica desde localStorage
+    if (typeof window !== 'undefined') {
+      const savedChartPreference = localStorage.getItem('penguintype_chart');
+      if (savedChartPreference !== null) {
+        setShowRealTimeChart(savedChartPreference === 'true');
+      }
+    }
   }, []);
 
   // Usar estilos seguros para SSR hasta que se complete la hidratación
@@ -91,9 +103,9 @@ export default function TypingPage() {
   };
   
   // Función para obtener datos del gráfico
-  const getChartData = () => {
+  const getChartData = useCallback(() => {
     // Si no hay datos suficientes o no está hidratado, devolver un dataset vacío
-    if (!isHydrated || wpmHistory.length <= 1 || accuracyHistory.length <= 1) {
+    if (!isHydrated || wpmHistory.length === 0) {
       return {
         labels: [],
         datasets: []
@@ -112,7 +124,7 @@ export default function TypingPage() {
           data: validWpmHistory.map(entry => entry.wpm),
           borderColor: safeStyles.color,
           backgroundColor: 'transparent',
-          tension: 0.2,
+          tension: 0.4,
           pointRadius: 0,
           borderWidth: 2,
           fill: false,
@@ -124,7 +136,7 @@ export default function TypingPage() {
           data: accuracyHistory.map(entry => entry.accuracy),
           borderColor: safeStyles.color,
           backgroundColor: 'transparent',
-          tension: 0.2,
+          tension: 0.4,
           pointRadius: 0,
           borderWidth: 2,
           fill: false,
@@ -132,19 +144,47 @@ export default function TypingPage() {
         }
       ]
     };
-  };
+  }, [isHydrated, wpmHistory, accuracyHistory, safeStyles.color]);
+
+  // Calcular el máximo del eje Y de forma dinámica
+  const getYAxisMax = useCallback(() => {
+    if (wpmHistory.length === 0) return 80; // Valor predeterminado
+    
+    // Obtener el máximo WPM histórico
+    const maxWpm = Math.max(...wpmHistory.map(entry => entry.wpm));
+    
+    // Redondear hacia arriba al siguiente múltiplo de 20 y añadir un margen
+    const roundedMax = Math.ceil(maxWpm / 20) * 20;
+    
+    // Establecer un margen adicional basado en el rango de valores
+    const margin = maxWpm > 150 ? 40 : 20;
+    
+    // Devolver al menos 80 o el valor calculado
+    return Math.max(80, roundedMax + margin);
+  }, [wpmHistory]);
+  
+  // Determinar el tamaño del paso para las marcas del eje Y
+  const getYAxisStepSize = useCallback(() => {
+    if (wpmHistory.length === 0) return 20; // Valor predeterminado
+    
+    const maxWpm = Math.max(...wpmHistory.map(entry => entry.wpm));
+    
+    // Ajustar el tamaño del paso según el rango
+    if (maxWpm > 200) return 50;
+    if (maxWpm > 100) return 40;
+    return 20;
+  }, [wpmHistory]);
 
   // Opciones de la gráfica - actualizadas para usar safeStyles
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    devicePixelRatio: 1, // Forzar una resolución constante
     scales: {
       y: {
         type: 'linear' as const,
         min: 0,
-        max: wpmHistory.length > 0 ? 
-             Math.max(80, Math.ceil(Math.max(...wpmHistory.map(entry => entry.wpm)) / 20) * 20) : 
-             80, // Mínimo 80 WPM o el máximo redondeado hacia arriba
+        max: getYAxisMax(),
         title: {
           display: true,
           text: 'Words per Minute',
@@ -168,7 +208,7 @@ export default function TypingPage() {
             family: 'monospace',
             weight: 'bold' as const
           },
-          stepSize: 20, // Mostrar marcas cada 20 WPM
+          stepSize: getYAxisStepSize(),
           padding: 10
         },
         border: {
@@ -250,11 +290,52 @@ export default function TypingPage() {
         },
       },
       tooltip: {
-        enabled: false
+        enabled: true,
+        mode: 'index' as const,
+        intersect: false,
+        backgroundColor: `${safeStyles.backgroundColor}EE`,
+        titleColor: safeStyles.color,
+        bodyColor: safeStyles.color,
+        borderColor: `${safeStyles.color}40`,
+        borderWidth: 1,
+        cornerRadius: 4,
+        padding: 8,
+        titleFont: {
+          family: 'monospace',
+          weight: 'bold' as const,
+          size: 12,
+        },
+        bodyFont: {
+          family: 'monospace',
+          size: 12,
+        },
+        callbacks: {
+          title: function(tooltipItems: Array<{dataIndex: number}>) {
+            // Convertir el índice de tiempo a segundos
+            if (tooltipItems.length > 0) {
+              const dataIndex = tooltipItems[0].dataIndex;
+              const validWpmEntry = wpmHistory[dataIndex];
+              return validWpmEntry ? `${validWpmEntry.time.toFixed(1)}s` : '';
+            }
+            return '';
+          },
+          label: function(context: {dataset: {label?: string}, parsed: {y: number}}) {
+            const label = context.dataset.label || '';
+            const value = context.parsed.y;
+            
+            if (label === 'WPM') {
+              return `WPM: ${value}`;
+            } else if (label === 'Accuracy') {
+              return `Precisión: ${value}%`;
+            }
+            return `${label}: ${value}`;
+          },
+        },
+        displayColors: false,
       }
     },
     animation: {
-      duration: 0 // Desactivar todas las animaciones
+      duration: 0 // Duración cero para eliminar todas las animaciones
     },
     transitions: {
       active: {
@@ -265,14 +346,24 @@ export default function TypingPage() {
     },
     elements: {
       line: {
-        tension: 0.2, // Suavizar la línea
+        tension: 0.4, // Aumentar el suavizado de la línea
         borderWidth: 2, // Ancho de línea constante
       },
       point: {
-        radius: 0 // Desactivar puntos
+        radius: 0, // Invisible normalmente
+        hoverRadius: 5, // Visible al pasar el cursor
+        hoverBackgroundColor: safeStyles.color,
+        hoverBorderColor: 'white',
+        hoverBorderWidth: 2,
       }
     },
-    redraw: false // Evitar redibujar todo el gráfico
+    redraw: false, // Evitar redibujar todo el gráfico
+    resizeDelay: 0, // No retrasar redimensionamientos
+    interaction: {
+      mode: 'nearest' as const,
+      intersect: false,
+      includeInvisible: true, // Reducir problemas de hover
+    }
   };
 
   // Botón de leaderboard
@@ -286,6 +377,29 @@ export default function TypingPage() {
     handleSubmitScore();
   }, [handleSubmitScore]);
 
+  // Efecto para forzar la actualización de la gráfica cuando cambia wpmHistory
+  useEffect(() => {
+    if (isActive && showRealTimeChart) {
+      // Reducir la frecuencia de actualizaciones forzadas
+      const timeoutId = setTimeout(() => {
+        // No usamos graphUpdateCounter pero lo mantenemos para posibles futuras actualizaciones
+      }, 300); // Actualizar solo cada 300ms para reducir parpadeo
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [wpmHistory, isActive, showRealTimeChart]);
+
+  // Función para alternar la visibilidad de la gráfica y guardar en localStorage
+  const handleToggleChart = useCallback(() => {
+    setShowRealTimeChart(prev => {
+      const newValue = !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('penguintype_chart', newValue.toString());
+      }
+      return newValue;
+    });
+  }, []);
+
   return (
     <div 
       className="relative isolate flex items-center justify-center min-h-screen w-full"
@@ -294,61 +408,105 @@ export default function TypingPage() {
       {/* Selector de tiempo en la parte superior */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: isActive ? 0 : 1, y: isActive ? -30 : 0 }}
+        animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -20 }}
-        className={`fixed top-6 inset-x-0 z-50 flex justify-center items-center space-x-2 transition-opacity duration-300 ${
-          isActive ? 'pointer-events-none' : ''
-        }`}
+        className={`fixed top-6 inset-x-0 z-50 flex justify-center items-center space-x-2 transition-opacity duration-300`}
+        style={{ 
+          opacity: isActive ? 0 : 1, 
+          pointerEvents: isActive ? 'none' : 'auto',
+          visibility: isActive ? 'hidden' : 'visible'
+        }}
       >
         <div className="bg-zinc-900/80 backdrop-blur-sm rounded-lg py-2 px-1 flex items-center gap-1 shadow-lg">
           {[15, 30, 60, 120].map((time) => (
             <button
               key={time}
               onClick={() => handleTimeChange(time as 15 | 30 | 60 | 120)}
-              className={`px-3 py-1 text-sm font-medium transition-colors ${
-                selectedTime === time && !isCompetitiveMode
-                  ? 'text-white' 
-                  : 'text-zinc-400 hover:text-white'
-              }`}
+              className={`px-3 py-1 text-sm font-medium transition-colors hover:opacity-80`}
+              style={{ 
+                color: isHydrated 
+                  ? selectedTime === time && !isCompetitiveMode
+                    ? themes.find(t => t.id === currentTheme)?.colors[2] || '#FFFFFF'
+                    : themes.find(t => t.id === currentTheme)?.colors[0] || '#AAAAAA'
+                  : '#AAAAAA'
+              }}
             >
               {time}
             </button>
           ))}
           <button
             onClick={() => handleTimeChange('competitive')}
-            className={`px-3 py-1 text-sm font-medium transition-colors flex items-center justify-center ${
-              isCompetitiveMode 
-                ? 'text-white' 
-                : 'text-zinc-400 hover:text-white'
-            }`}
+            className={`px-3 py-1 text-sm font-medium transition-colors flex items-center justify-center hover:opacity-80`}
+            style={{ 
+              color: isHydrated 
+                ? isCompetitiveMode
+                  ? themes.find(t => t.id === currentTheme)?.colors[2] || '#FFFFFF'
+                  : themes.find(t => t.id === currentTheme)?.colors[0] || '#AAAAAA'
+                : '#AAAAAA'
+            }}
           >
             <Trophy size={16} />
+          </button>
+          <div className="h-4 w-px bg-zinc-700 mx-1"></div>
+          <button
+            onClick={handleToggleChart}
+            className={`px-3 py-1 text-sm font-medium transition-colors flex items-center justify-center hover:opacity-80`}
+            style={{ 
+              color: isHydrated 
+                ? showRealTimeChart
+                  ? themes.find(t => t.id === currentTheme)?.colors[2] || '#FFFFFF'
+                  : themes.find(t => t.id === currentTheme)?.colors[0] || '#AAAAAA'
+                : '#AAAAAA'
+            }}
+          >
+            <LineChart size={16} />
           </button>
         </div>
       </motion.div>
       
       {/* Logo en la esquina izquierda */}
-      <div className="fixed top-6 left-20 z-50 flex items-center space-x-4">
+      <div className="fixed top-6 left-20 z-50 flex items-center space-x-4" style={{ opacity: 1, visibility: 'visible' }}>
         <Keyboard 
           size={32} 
           className="text-white opacity-90"
-          style={{ color: safeStyles.color }}
+          style={{ color: isHydrated 
+            ? themes.find(t => t.id === currentTheme)?.colors[2] || safeStyles.color 
+            : safeStyles.color 
+          }}
         />
-        <Link href="/">
+        <div className="flex items-baseline">
+          <Link href="/">
+            <span 
+              className="text-3xl font-mono font-bold tracking-tight cursor-pointer hover:opacity-80 transition-opacity"
+              style={{ color: isHydrated 
+                ? themes.find(t => t.id === currentTheme)?.colors[1] || safeStyles.color 
+                : safeStyles.color 
+              }}
+            >
+              penguin
+            </span>
+          </Link>
           <span 
+            onClick={handleReset}
             className="text-3xl font-mono font-bold tracking-tight cursor-pointer hover:opacity-80 transition-opacity"
-            style={{ color: safeStyles.color }}
+            style={{ color: isHydrated 
+              ? themes.find(t => t.id === currentTheme)?.colors[2] || safeStyles.color 
+              : safeStyles.color 
+            }}
           >
-            penguintype
+            type
           </span>
-        </Link>
+        </div>
       </div>
       
       {/* Botones de perfil, ranking y temas */}
       <div 
-        className={`fixed top-6 right-6 z-50 flex items-center space-x-4 transition-opacity duration-300 ${
-          isActive ? 'opacity-0 pointer-events-none' : 'opacity-100'
-        }`}
+        className="fixed top-6 right-6 z-50 flex items-center space-x-4 transition-opacity duration-300"
+        style={{ 
+          opacity: isActive ? 0 : 1, 
+          pointerEvents: isActive ? 'none' : 'auto',
+          visibility: isActive ? 'hidden' : 'visible'
+        }}
       >
         <motion.button
           whileHover={{ scale: 1.05 }}
@@ -356,6 +514,10 @@ export default function TypingPage() {
           onClick={handleProfileClick}
           className="text-zinc-400 hover:text-white transition-colors p-2"
           aria-label={isLoadingUser ? 'Cargando...' : currentUser ? 'Perfil' : 'Iniciar sesión'}
+          style={{ color: isHydrated 
+            ? themes.find(t => t.id === currentTheme)?.colors[0] || '#AAAAAA' 
+            : '#AAAAAA'
+          }}
         >
           <User size={22} />
         </motion.button>
@@ -366,6 +528,10 @@ export default function TypingPage() {
           onClick={handleLeaderboardToggle}
           className="text-zinc-400 hover:text-white transition-colors p-2"
           aria-label="Ranking"
+          style={{ color: isHydrated 
+            ? themes.find(t => t.id === currentTheme)?.colors[0] || '#AAAAAA' 
+            : '#AAAAAA'
+          }}
         >
           <Crown size={22} />
         </motion.button>
@@ -378,6 +544,7 @@ export default function TypingPage() {
             correct: '#777777',
             cursor: '#999999',
             error: '#FF5555',
+            typed: '#FFFFFF',
             background: '#000000'
           } : themeColors}
           isActive={isActive}
@@ -397,47 +564,140 @@ export default function TypingPage() {
         >
           {/* Contenedor del texto a escribir */}
           <div 
-            className="rounded-xl p-4 cursor-text w-full max-w-[80%] mx-auto"
+            className="rounded-xl p-4 cursor-text w-full max-w-[80%] mx-auto h-64 relative overflow-hidden"
             onClick={handleFocus}
             ref={textContainerRef}
           >
-            <div className="flex items-center justify-center">
-              <div className="text-2xl md:text-3xl leading-loose font-mono w-full text-justify">
-                {targetText.split('').map((char, index) => {
+            <div className="flex items-center justify-center h-full">
+              <div className="text-xl md:text-4xl leading-relaxed font-mono tracking-wide w-full text-justify" style={{ 
+                fontVariantLigatures: 'none', 
+                fontFamily: "'JetBrains Mono', 'Fira Code', 'Menlo', 'Consolas', monospace",
+                textShadow: isHydrated ? `0 0 8px ${themeColors.background}, 0 0 2px ${themes.find(t => t.id === currentTheme)?.colors[0]}40` : 'none'
+              }}>
+                {(() => {
+                  // Número aproximado de caracteres por línea basado en el ancho del contenedor
+                  const charsPerLine = 59; // Ajusta este valor según el ancho de tu contenedor y tamaño de fuente
+                  
+                  // Dividir el texto en líneas lógicas (por palabras)
+                  const textLines: string[] = [];
+                  let currentLine = '';
+                  let wordBuffer = '';
+                  
+                  // Crear las líneas dividiendo por palabras
+                  for (let i = 0; i < targetText.length; i++) {
+                    const char = targetText[i];
+                    wordBuffer += char;
+                    
+                    if (char === ' ' || i === targetText.length - 1) {
+                      // Si añadir esta palabra excede el límite de caracteres y la línea no está vacía
+                      if (currentLine.length + wordBuffer.length > charsPerLine && currentLine.length > 0) {
+                        textLines.push(currentLine);
+                        currentLine = wordBuffer;
+                      } else {
+                        currentLine += wordBuffer;
+                      }
+                      wordBuffer = '';
+                    }
+                  }
+                  
+                  // Añadir la última línea si queda algo
+                  if (currentLine.length > 0) {
+                    textLines.push(currentLine);
+                  }
+                  
+                  // Calcular índices de inicio y fin de cada línea para navegación precisa
+                  const lineIndices = [];
+                  let charCount = 0;
+                  
+                  for (const line of textLines) {
+                    const startIndex = charCount;
+                    charCount += line.length;
+                    const endIndex = charCount;
+                    lineIndices.push({ startIndex, endIndex });
+                  }
+                  
+                  // Encontrar en qué línea está actualmente el cursor
+                  let currentLineIndex = 0;
+                  for (let i = 0; i < lineIndices.length; i++) {
+                    if (text.length < lineIndices[i].endIndex) {
+                      currentLineIndex = i;
+                      break;
+                    }
+                  }
+                  
+                  // Si hemos llegado al final del texto, quedarnos en la última línea
+                  if (text.length >= targetText.length && lineIndices.length > 0) {
+                    currentLineIndex = lineIndices.length - 1;
+                  }
+                  
+                  // Decidir qué líneas mostrar (3 líneas)
+                  let startLineIndex = Math.max(0, currentLineIndex);
+                  
+                  // Asegurarnos de no exceder los límites
+                  startLineIndex = Math.max(0, Math.min(startLineIndex, textLines.length - 3));
+                  const endLineIndex = Math.min(textLines.length - 1, startLineIndex + 2);
+                  
+                  // Calcular el rango de caracteres a mostrar
+                  const startCharIndex = startLineIndex > 0 ? lineIndices[startLineIndex].startIndex : 0;
+                  const endCharIndex = endLineIndex < lineIndices.length ? lineIndices[endLineIndex].endIndex : targetText.length;
+                  
+                  // Renderizar solo los caracteres dentro del rango visible
+                  return targetText.slice(startCharIndex, endCharIndex).split('').map((char, localIndex) => {
+                    const globalIndex = startCharIndex + localIndex;
                   let className = "opacity-70";
                   let style: React.CSSProperties = { color: '#777777' };
                   
                   if (isHydrated) {
+                      // Encontrar el tema actual para colores específicos
+                      const currentThemeObj = themes.find(t => t.id === currentTheme) || themes[0];
+                      
                     // Solo aplicar estilos específicos del tema después de la hidratación
-                    if (index < text.length) {
+                      if (globalIndex < text.length) {
                       // Carácter ya escrito
-                      if (text[index] === char) {
+                        if (text[globalIndex] === char) {
                         className = "text-theme-correct";
-                        style = { color: themeColors.correct };
+                          // Usar el tercer color del tema (index 2) para texto ya escrito
+                          style = { 
+                            color: currentThemeObj.colors[2],
+                            textShadow: `0 0 4px ${currentThemeObj.colors[2]}30`
+                          };
                       } else {
                         className = "text-theme-error border-b-2";
+                        // Siempre usar rojo para caracteres incorrectos
                         style = { 
-                          color: themeColors.error,
-                          borderBottomColor: themeColors.error
+                          color: '#FF3333',
+                          borderBottomColor: '#FF3333',
+                          textShadow: '0 0 5px rgba(255, 0, 0, 0.3)',
+                          fontWeight: 'bold'
                         };
                       }
-                    } else if (index === text.length) {
+                      } else if (globalIndex === text.length) {
                       // Carácter actual (cursor)
                       className = "text-white animate-pulse";
+                        const cursorColor = themes.find(t => t.id === currentTheme)?.colors[1] || themeColors.cursor;
                       style = { 
-                        backgroundColor: `${themeColors.cursor}50`,
-                        color: '#FFFFFF'
-                      };
-                    }
+                          backgroundColor: `${cursorColor}90`,
+                          color: '#FFFFFF',
+                          borderRadius: '2px',
+                          padding: '0 2px',
+                          textShadow: `0 0 8px #FFFFFF90`,
+                          boxShadow: `0 0 8px ${cursorColor}70`
+                        };
+                      } else {
+                        // Carácter no escrito todavía - usar el primer color del tema
+                        className = "opacity-70";
+                        // Usar el primer color del tema (index 0) para texto no escrito
+                        style = { color: currentThemeObj.colors[0] };
+                      }
                   }
                   
                   // Espacio en blanco
                   if (char === ' ') {
                   return (
                       <span 
-                        key={index} 
-                        className={`${className} px-2`}
-                        style={style}
+                          key={globalIndex} 
+                          className={`${className} px-2 font-light`}
+                          style={{...style, letterSpacing: '0.05em'}}
                       >
                       {char}
                     </span>
@@ -446,14 +706,15 @@ export default function TypingPage() {
                   
                   return (
                     <span 
-                      key={index} 
-                      className={`${className} tracking-wide`}
-                      style={style}
+                        key={globalIndex} 
+                        className={`${className} font-light`}
+                        style={{...style, letterSpacing: '0.05em'}}
                     >
                       {char}
                     </span>
                   );
-                })}
+                  });
+                })()}
               </div>
             </div>
             </div>
@@ -468,6 +729,63 @@ export default function TypingPage() {
                 autoFocus
               />
               
+          {/* Gráfica en tiempo real */}
+          {showRealTimeChart && isActive && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ 
+                duration: 1.2, 
+                ease: "easeOut",
+                opacity: { duration: 1.5 },
+                y: { duration: 1.2, ease: "easeInOut" }
+              }}
+              className="mt-8 rounded-xl p-4 w-full max-w-[80%] mx-auto bg-black/30 border border-white/10"
+              style={{ backgroundColor: `${safeStyles.backgroundColor}CC` }}
+            >
+              {/* Valores actuales en tiempo real */}
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex flex-col items-center">
+                  <div className="text-xs uppercase tracking-wide font-mono" style={{ color: safeStyles.color }}>
+                    WPM Actual
+                  </div>
+                  <div className="text-3xl font-bold font-mono" style={{ color: safeStyles.color }}>
+                    {isActive && startTime ? calculateCurrentWPM() : 0}
+                  </div>
+                </div>
+                
+                <div className="flex flex-col items-center">
+                  <div className="text-xs uppercase tracking-wide font-mono" style={{ color: safeStyles.color }}>
+                    Precisión
+                  </div>
+                  <div className="text-3xl font-bold font-mono" style={{ color: safeStyles.color }}>
+                    {isActive && text.length > 0 ? calculateAccuracy(text, targetText) : 100}%
+                  </div>
+                </div>
+              </div>
+              
+              <div className="h-48 md:h-64 flex items-center justify-center">
+                <div className="w-full h-full relative">
+                  <Line 
+                    data={getChartData()} 
+                    options={chartOptions} 
+                    key={`real-time-chart`} 
+                  />
+                  <div 
+                    className="absolute bottom-0 right-0 text-xs font-mono font-bold" 
+                    style={{ 
+                      color: `${safeStyles.color}AA`, 
+                      marginRight: '5px', 
+                      marginBottom: '5px' 
+                    }}
+                  >
+                    
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+          
           {/* Resultados del test */}
               {endTime && (
             <motion.div 
@@ -527,7 +845,7 @@ export default function TypingPage() {
                         marginBottom: '5px' 
                       }}
                     >
-                      other
+                      
                     </div>
                   </div>
                 </div>

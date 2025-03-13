@@ -10,6 +10,7 @@ const DEFAULT_THEME_COLORS: ThemeColors = {
   correct: '#777777',
   cursor: '#999999',
   error: '#FF5555',
+  typed: '#FFFFFF',
   background: '#000000'
 };
 
@@ -233,7 +234,10 @@ export function ThemeButton({
         whileTap={{ scale: 0.95 }}
         onClick={() => setShowThemeSelector(!showThemeSelector)}
         className="relative p-2 text-zinc-400 hover:text-white transition-colors"
-        style={{ color: showThemeSelector ? activeThemeColors.correct : undefined }}
+        style={{ color: showThemeSelector 
+          ? activeThemeColors.correct 
+          : themes.find(t => t.id === currentTheme)?.colors[0] || undefined 
+        }}
         aria-label="Cambiar tema"
       >
         <Palette size={22} />

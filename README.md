@@ -58,8 +58,26 @@ frontend/
 │   │   │   ├── layout.tsx    # Layout de problemas
 │   │   │   └── page.tsx      # Página de problemas
 │   │   ├── typing/        
-│   │   │   ├── layout.tsx    # Layout de typing
-│   │   │   └── page.tsx      # Página de typing
+│   │   │   ├── components/       # Componentes para módulo de typing
+│   │   │   │   ├── Header.tsx          # Cabecera de la sección de typing
+│   │   │   │   ├── Leaderboard.tsx     # Componente de tabla de clasificación
+│   │   │   │   ├── ThemeButton.tsx     # Selector de temas visuales
+│   │   │   │   ├── TimeSelector.tsx    # Selector de duración de prueba
+│   │   │   │   └── UserProfile.tsx     # Perfil y estadísticas del usuario
+│   │   │   ├── constants/       # Constantes para módulo de typing
+│   │   │   │   ├── texts.ts           # Textos para pruebas de typing
+│   │   │   │   └── themes.ts          # Definiciones de temas visuales
+│   │   │   ├── hooks/           # Hooks personalizados
+│   │   │   │   ├── useSupabase.ts      # Integración con Supabase
+│   │   │   │   ├── useTheme.ts         # Gestión de temas visuales
+│   │   │   │   ├── useTypingMetrics.ts # Cálculo de métricas de typing
+│   │   │   │   └── useTypingTest.ts    # Lógica principal de prueba de typing
+│   │   │   ├── types/           # Definiciones de tipos
+│   │   │   │   └── index.ts           # Tipos para el módulo de typing
+│   │   │   ├── utils/           # Utilidades
+│   │   │   │   └── config.ts          # Configuraciones generales
+│   │   │   ├── layout.tsx       # Layout personalizado para typing
+│   │   │   └── page.tsx         # Página principal de typing
 │   │   ├── registro/        
 │   │   │   └── page.tsx      # Página de registro
 │   │   ├── favicon.ico       # Favicon del sitio
@@ -140,6 +158,37 @@ backend/                    # Servicios de backend (Supabase)
 - Selección de duración de prueba (15s, 30s, 60s, 120s)
 - Temas visuales personalizables
 
+##### Arquitectura del Módulo de Typing
+- **Componentes principales**:
+  - `ThemeButton.tsx`: Permite al usuario seleccionar entre distintos temas visuales predefinidos
+  - `Leaderboard.tsx`: Muestra una tabla de clasificación con los mejores resultados
+  - `UserProfile.tsx`: Gestiona la visualización del perfil y estadísticas del usuario
+  - `TimeSelector.tsx`: Permite seleccionar la duración de la prueba de escritura
+  - `Header.tsx`: Cabecera personalizada para la sección de typing
+
+- **Hooks personalizados**:
+  - `useTypingTest.ts`: Gestiona la lógica principal de la prueba, incluyendo el estado del texto, entrada del usuario y temporizador
+  - `useTypingMetrics.ts`: Calcula métricas como WPM, precisión y consistencia
+  - `useTheme.ts`: Gestiona la selección y aplicación de temas visuales
+  - `useSupabase.ts`: Proporciona integración con Supabase para persistencia de datos
+
+- **Sistema de datos**:
+  - Almacenamiento de estadísticas de usuario en Supabase
+  - Clasificación en tiempo real con actualizaciones automáticas
+  - Persistencia de preferencias de tema y configuración
+
+- **Visualización de datos**:
+  - Gráficos de rendimiento en tiempo real con Chart.js
+  - Análisis visual de rendimiento histórico
+  - Animaciones fluidas con Framer Motion
+
+##### Flujo de trabajo del usuario
+1. El usuario selecciona una duración de prueba (15s, 30s, 60s, 120s)
+2. Comienza a escribir el texto mostrado
+3. El sistema realiza un seguimiento en tiempo real de su rendimiento
+4. Al finalizar, se muestran estadísticas detalladas y se actualiza la tabla de clasificación
+5. Los datos se sincronizan con Supabase para persistencia
+
 #### 5. Problemas de IA
 - Desafíos prácticos
 - Ejercicios de programación
@@ -174,16 +223,28 @@ backend/                    # Servicios de backend (Supabase)
 1. Implementar sistema de búsqueda avanzada
 2. Mejorar la experiencia móvil
 3. Agregar más integraciones sociales
+4. **Módulo de Typing**:
+   - Añadir más textos de práctica categorizados por dificultad
+   - Implementar modo de competición en tiempo real contra otros usuarios
+   - Añadir un sistema de logros por hitos de rendimiento
 
 #### Mediano Plazo
 1. Sistema de gamificación
 2. Marketplace de recursos
 3. API pública para desarrolladores
+4. **Módulo de Typing**:
+   - Desarrollar ejercicios específicos para programadores (código)
+   - Añadir análisis de debilidades y recomendaciones de práctica
+   - Integración con herramientas de productividad externas
 
 #### Largo Plazo
 1. Sistema de mentorías
 2. Plataforma de certificaciones
 3. Herramientas de IA personalizadas
+4. **Módulo de Typing**:
+   - Implementar aprendizaje automático para predecir y mejorar el rendimiento del usuario
+   - Desarrollo de un teclado virtual con seguimiento de movimiento
+   - Añadir soporte para múltiples idiomas y teclados
 
 ### Consideraciones Técnicas
 

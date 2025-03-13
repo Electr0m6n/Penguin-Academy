@@ -18,7 +18,8 @@ export function useTypingTest() {
     calculateFinalAccuracy,
     calculateDetailedStats,
     updateHistory,
-    resetMetrics
+    resetMetrics,
+    trackTextChanges
   } = useTypingMetrics();
 
   const {
@@ -230,34 +231,55 @@ export function useTypingTest() {
     let interval: NodeJS.Timeout | null = null;
     
     if (isActive && startTime && !endTime) {
-      // Iniciar con un valor base
-      if (wpmHistory.length === 0 && currentPosition > 0) {
-        const initialWpm = calculateCurrentWPM();
-        const initialAcc = calculateAccuracy(text, targetText);
-        updateHistory(0, null, initialWpm, initialAcc);
+      // Iniciar con un valor base inmediatamente
+      const initialWpm = calculateCurrentWPM();
+      const initialAcc = calculateAccuracy(text, targetText);
+      updateHistory(0, null, initialWpm, initialAcc);
+      
+      // Actualizar inmediatamente con los valores actuales
+      const currentTime = (Date.now() - startTime) / 1000;
+      if (currentPosition > 0) {
+        const currentWpm = calculateCurrentWPM();
+        const currentAcc = calculateAccuracy(text, targetText);
+        updateHistory(currentTime, null, currentWpm, currentAcc);
       }
       
+      // Usar un intervalo muy corto para actualización ultra fluida
+      let lastUpdate = Date.now();
       interval = setInterval(() => {
-        const currentTime = (Date.now() - startTime) / 1000;
-        // Solo registrar si se ha escrito algo
+        const now = Date.now();
+        const deltaMs = now - lastUpdate;
+        
+        // Calcular valores siempre, pero solo actualizar la gráfica si ha pasado suficiente tiempo
+        // o si ha habido un cambio significativo en la posición del texto
+        const currentTime = (now - startTime) / 1000;
+        
+        // Siempre calcular para tener los valores más recientes
         if (currentPosition > 0) {
           const currentWpm = calculateCurrentWPM();
           const currentAcc = calculateAccuracy(text, targetText);
           
-          // Solo registrar si el WPM es mayor a 0
-          if (currentWpm > 0) {
+          // Optimizar actualizaciones - solo actualizar en estos casos:
+          // 1. Ha pasado al menos 50ms desde la última actualización
+          // 2. El usuario ha escrito más caracteres (delta importante)
+          // 3. Es un momento clave (cada 5 caracteres)
+          if (
+            deltaMs >= 50 || 
+            currentPosition % 5 === 0 ||
+            currentPosition === targetText.length // Punto final
+          ) {
             updateHistory(currentTime, null, currentWpm, currentAcc);
+            lastUpdate = now; // Actualizar el tiempo de la última actualización
           }
         }
-        
-      }, 2000); // Actualizar cada 2 segundos
+      }, 50); // Intervalo ultra corto para capturar cambios rápidamente
     }
     
     return () => {
       if (interval) clearInterval(interval);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isActive, startTime, endTime, currentPosition]);
+  }, [isActive, startTime, endTime, text, currentPosition]);
 
   // Función para cambiar el tiempo seleccionado
   const handleTimeChange = (time: TestDuration) => {
@@ -277,6 +299,13 @@ export function useTypingTest() {
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newText = e.target.value;
     if (newText.length <= targetText.length) {
+      // Activar inmediatamente al empezar a escribir
+      if (newText.length === 1 && startTime === null) {
+        setIsActive(true);
+      }
+      
+      // Rastrear cambios para contar correctamente todas las pulsaciones
+      trackTextChanges(newText, targetText);
       setText(newText);
     }
   };

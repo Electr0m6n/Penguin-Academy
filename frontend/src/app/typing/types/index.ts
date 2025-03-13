@@ -22,6 +22,7 @@ export interface ThemeColors {
   correct: string;
   cursor: string;
   error: string;
+  typed: string;
   background: string;
 }
 
