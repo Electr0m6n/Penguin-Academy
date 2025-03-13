@@ -59,11 +59,21 @@ frontend/
 │   │   │   └── page.tsx      # Página de problemas
 │   │   ├── typing/        
 │   │   │   ├── components/       # Componentes para módulo de typing
-│   │   │   │   ├── Header.tsx          # Cabecera de la sección de typing
+│   │   │   │   ├── Layout/             # Componentes de estructura de página
+│   │   │   │   │   ├── Header.tsx        # Cabecera principal con controles
+│   │   │   │   │   └── TimeSelector.tsx  # Selector de duración de prueba
+│   │   │   │   ├── TypingArea/         # Componentes del área de escritura
+│   │   │   │   │   ├── TextDisplay.tsx    # Visualización del texto a escribir
+│   │   │   │   │   └── TypingInput.tsx    # Campo de entrada para escritura
+│   │   │   │   ├── Chart/              # Componentes de visualización de datos
+│   │   │   │   │   ├── RealTimeChart.tsx   # Gráfica en tiempo real
+│   │   │   │   │   ├── ResultsChart.tsx    # Gráfica de resultados finales
+│   │   │   │   │   └── ChartOptions.tsx    # Configuraciones de gráficas
 │   │   │   │   ├── Leaderboard.tsx     # Componente de tabla de clasificación
+│   │   │   │   ├── UserProfile.tsx     # Perfil y estadísticas del usuario
 │   │   │   │   ├── ThemeButton.tsx     # Selector de temas visuales
-│   │   │   │   ├── TimeSelector.tsx    # Selector de duración de prueba
-│   │   │   │   └── UserProfile.tsx     # Perfil y estadísticas del usuario
+│   │   │   │   ├── Header.tsx          # Cabecera (versión antigua)
+│   │   │   │   └── TimeSelector.tsx    # Selector de tiempo (versión antigua)
 │   │   │   ├── constants/       # Constantes para módulo de typing
 │   │   │   │   ├── texts.ts           # Textos para pruebas de typing
 │   │   │   │   └── themes.ts          # Definiciones de temas visuales
@@ -160,15 +170,23 @@ backend/                    # Servicios de backend (Supabase)
 
 ##### Arquitectura del Módulo de Typing
 - **Componentes principales**:
-  - `ThemeButton.tsx`: Permite al usuario seleccionar entre distintos temas visuales predefinidos
+  - **Layout**:
+    - `Header.tsx`: Cabecera principal con navegación, logo y acceso a perfil
+    - `TimeSelector.tsx`: Permite seleccionar la duración de la prueba de escritura
+  - **TypingArea**:
+    - `TextDisplay.tsx`: Visualiza el texto a escribir con resaltado de progreso
+    - `TypingInput.tsx`: Campo de entrada invisible que captura la escritura
+  - **Chart**:
+    - `RealTimeChart.tsx`: Muestra gráficos de rendimiento durante la prueba
+    - `ResultsChart.tsx`: Visualiza resultados finales con métricas detalladas
+    - `ChartOptions.tsx`: Configura opciones y estilos de los gráficos
   - `Leaderboard.tsx`: Muestra una tabla de clasificación con los mejores resultados
   - `UserProfile.tsx`: Gestiona la visualización del perfil y estadísticas del usuario
-  - `TimeSelector.tsx`: Permite seleccionar la duración de la prueba de escritura
-  - `Header.tsx`: Cabecera personalizada para la sección de typing
+  - `ThemeButton.tsx`: Permite al usuario seleccionar entre distintos temas visuales predefinidos
 
 - **Hooks personalizados**:
   - `useTypingTest.ts`: Gestiona la lógica principal de la prueba, incluyendo el estado del texto, entrada del usuario y temporizador
-  - `useTypingMetrics.ts`: Calcula métricas como WPM, precisión y consistencia
+  - `useTypingMetrics.ts`: Calcula métricas avanzadas como WPM, precisión y consistencia
   - `useTheme.ts`: Gestiona la selección y aplicación de temas visuales
   - `useSupabase.ts`: Proporciona integración con Supabase para persistencia de datos
 
