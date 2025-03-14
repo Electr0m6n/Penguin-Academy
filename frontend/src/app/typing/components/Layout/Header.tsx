@@ -45,20 +45,23 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   return (
     <>
-      {/* Logo en la esquina izquierda */}
-      <div className="fixed top-6 left-20 z-50 flex items-center space-x-4" style={{ opacity: 1, visibility: 'visible' }}>
+      {/* Logo en la esquina izquierda - SIEMPRE VISIBLE Y CLICKEABLE */}
+      <div 
+        className="fixed top-6 left-20 z-[100] flex items-center space-x-4" 
+      >
         <Keyboard 
           size={32} 
-          className="text-white opacity-90"
+          className="text-white opacity-90 cursor-pointer"
           style={{ color: isHydrated 
             ? themes.find(t => t.id === currentTheme)?.colors[2] || safeStyles.color 
             : safeStyles.color 
           }}
+          onClick={() => window.location.reload()}
         />
         <div className="flex items-baseline">
-          <Link href="/">
+          <Link href="/" className="cursor-pointer">
             <span 
-              className="text-3xl font-mono font-bold tracking-tight cursor-pointer hover:opacity-80 transition-opacity"
+              className="text-3xl font-mono font-bold tracking-tight hover:opacity-80 transition-opacity"
               style={{ color: isHydrated 
                 ? themes.find(t => t.id === currentTheme)?.colors[1] || safeStyles.color 
                 : safeStyles.color 
@@ -80,13 +83,13 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
       
-      {/* Botones de perfil, ranking y temas */}
+      {/* Botones de perfil, ranking y temas - MEJOR MANEJO DE VISIBILITY */}
       <div 
-        className="fixed top-6 right-6 z-50 flex items-center space-x-4 transition-opacity duration-300"
+        className="fixed top-6 right-6 z-[100] flex items-center space-x-4"
         style={{ 
-          opacity: isActive ? 0 : 1, 
-          pointerEvents: isActive ? 'none' : 'auto',
-          visibility: isActive ? 'hidden' : 'visible'
+          opacity: isActive ? 0 : 1,
+          visibility: isActive ? 'hidden' : 'visible',
+          pointerEvents: isActive ? 'none' : 'auto'
         }}
       >
         <motion.button

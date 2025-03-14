@@ -63,7 +63,9 @@ export default function TypingPage() {
     calculateFinalAccuracy,
     handleReset,
     handleSubmitScore,
-    calculateAccuracy
+    calculateAccuracy,
+    codeMode,
+    setCodeMode
   } = useTypingTest();
   
   // Hook de Supabase
@@ -129,6 +131,15 @@ export default function TypingPage() {
     }
   }, [wpmHistory, isActive, showRealTimeChart]);
 
+  // Efecto para forzar la actualización del texto cuando cambia el modo código
+  useEffect(() => {
+    // Solo registramos el cambio sin forzar renderizaciones
+    if (codeMode !== undefined) {
+      console.log(`Modo código cambiado a: ${codeMode ? 'código' : 'normal'}, targetText actualizado`);
+    }
+    // No incluimos targetText en las dependencias para evitar actualizaciones innecesarias
+  }, [codeMode]);
+
   // Función para alternar la visibilidad de la gráfica y guardar en localStorage
   const handleToggleChart = useCallback(() => {
     setShowRealTimeChart(prev => {
@@ -139,6 +150,23 @@ export default function TypingPage() {
       return newValue;
     });
   }, []);
+  
+  // Función para alternar el modo código
+  const handleToggleCodeMode = useCallback(() => {
+    // Usar un único valor booleano para mayor claridad y menos complejidad
+    const newMode = !codeMode;
+    console.log(`Cambiando a modo: ${newMode ? 'código' : 'normal'}`);
+    
+    // Guardar en localStorage antes de actualizar el estado
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('penguintype_code_mode', newMode.toString());
+    }
+    
+    // Actualizar el modo - esto usará nuestra versión protegida en useTypingTest
+    setCodeMode(newMode);
+    
+    // El reset se hará después automáticamente debido a los efectos en useTypingTest
+  }, [codeMode, setCodeMode]);
 
   return (
     <div 
@@ -174,9 +202,11 @@ export default function TypingPage() {
         currentTheme={currentTheme}
         handleTimeChange={handleTimeChange}
         handleToggleChart={handleToggleChart}
+        codeMode={codeMode}
+        handleToggleCodeMode={handleToggleCodeMode}
       />
 
-      <div className="relative z-10 w-full flex flex-col items-center justify-center">
+      <div className="relative z-10 w-full flex flex-col items-center justify-center mt-12 pt-12">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -193,6 +223,8 @@ export default function TypingPage() {
             themes={themes}
             currentTheme={currentTheme}
             themeColors={themeColors}
+            codeMode={codeMode}
+            showRealTimeChart={showRealTimeChart}
           />
             
           {/* Entrada de texto oculta */}
@@ -218,6 +250,7 @@ export default function TypingPage() {
               targetText={targetText}
               calculateCurrentWPM={calculateCurrentWPM}
               calculateAccuracy={calculateAccuracy}
+              codeMode={codeMode}
             />
           )}
           

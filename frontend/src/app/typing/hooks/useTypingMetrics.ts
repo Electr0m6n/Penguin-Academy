@@ -62,10 +62,9 @@ export function useTypingMetrics() {
     // Aseguramos un mínimo de 3 segundos (0.05 minutos) para evitar valores inflados al inicio
     const timeElapsedMin = Math.max(0.05, (currentTime - startTime) / 1000 / 60);
     
-    // Solo contar caracteres correctamente escritos
-    // Esta vez verificamos estrictamente cada carácter con el original
+    // Para textos terminados, usar la longitud del texto para determinar chars correctos
     let correctCharsTyped = 0;
-    const textToAnalyze = text.substring(0, currentPosition);
+    const textToAnalyze = endTime ? text : text.substring(0, currentPosition);
     
     for (let i = 0; i < textToAnalyze.length; i++) {
       if (i < targetText.length && textToAnalyze[i] === targetText[i]) {
@@ -82,34 +81,39 @@ export function useTypingMetrics() {
     // Calcular WPM bruto con los caracteres correctos
     let wpm = effectiveWords / timeElapsedMin;
     
-    // Factor de corrección que considera el esfuerzo total (incluyendo correcciones)
-    const correctionFactor = Math.min(1.0, correctCharsTyped / Math.max(1, totalKeypresses));
-    
-    // Aplicar el factor de corrección a la velocidad bruta
-    wpm = wpm * Math.pow(correctionFactor, 0.85); // Ligeramente más estricto
-    
-    // Ajuste por precisión
-    const accuracy = calculateAccuracy(text, targetText) / 100; // entre 0 y 1
-    
-    // Aplicar un ajuste de precisión más estricto
-    // Penalizar más significativamente precisiones por debajo del 90%
-    let accuracyFactor;
-    if (accuracy >= 0.9) {
-      accuracyFactor = Math.pow(accuracy, 1.1);
-    } else {
-      // Penalización más fuerte para precisión baja
-      accuracyFactor = Math.pow(accuracy, 1.5);
+    // Aplicar factores de ajuste solo si no es un test finalizado
+    // Para tests finalizados, queremos mostrar el valor real sin ajustes
+    if (!endTime) {
+      // Factor de corrección que considera el esfuerzo total (incluyendo correcciones)
+      const correctionFactor = Math.min(1.0, correctCharsTyped / Math.max(1, totalKeypresses));
+      
+      // Aplicar el factor de corrección a la velocidad bruta, pero de forma más suave
+      wpm = wpm * Math.pow(correctionFactor, 0.7);
+      
+      // Ajuste por precisión
+      const accuracy = calculateAccuracy(text, targetText) / 100; // entre 0 y 1
+      
+      // Aplicar un ajuste de precisión más estricto solo para valores en tiempo real
+      let accuracyFactor;
+      if (accuracy >= 0.9) {
+        accuracyFactor = Math.pow(accuracy, 0.8); // Más suave
+      } else {
+        accuracyFactor = Math.pow(accuracy, 1.2); // Menos penalización
+      }
+      
+      // Aplicar factor de precisión al WPM
+      wpm = wpm * accuracyFactor;
     }
-    wpm = wpm * accuracyFactor;
     
-    // Aplicar un factor de calibración más conservador
-    const calibrationFactor = 0.92; // Ajuste del 8% para mayor precisión
-    const calibratedWpm = wpm * calibrationFactor;
+    // Si es un cálculo final, asegurar que sea al menos 1
+    if (endTime) {
+      console.log(`WPM calculado (final): ${wpm}`);
+      return Math.max(1, Math.round(wpm));
+    }
     
-    // Implementar un límite superior razonable de WPM (300 WPM es considerado muy rápido)
-    const cappedWpm = Math.min(300, Math.max(1, Math.round(calibratedWpm)));
-    
-    return cappedWpm;
+    // Retornar WPM redondeado para valores en tiempo real
+    const result = Math.max(1, Math.round(wpm));
+    return result;
   };
 
   // Calcular precisión durante la prueba
@@ -117,21 +121,58 @@ export function useTypingMetrics() {
     if (text.length === 0) return 0;
     
     let correctChars = 0;
-    const minLength = Math.min(text.length, targetText.length);
+    let incorrectChars = 0;
+    let extraChars = 0;
     
+    // Contar caracteres correctos e incorrectos en el texto escrito
+    const minLength = Math.min(text.length, targetText.length);
     for (let i = 0; i < minLength; i++) {
       if (text[i] === targetText[i]) {
         correctChars++;
+      } else {
+        incorrectChars++;
       }
     }
     
-    return Math.round((correctChars / text.length) * 100);
+    // Contar caracteres extra (si el texto escrito es más largo)
+    if (text.length > targetText.length) {
+      extraChars = text.length - targetText.length;
+    }
+    
+    // Total de caracteres incluye correctos, incorrectos y extras
+    const totalChars = correctChars + incorrectChars + extraChars;
+    
+    // Calcular el porcentaje de precisión usando el estándar
+    return Math.round((correctChars / totalChars) * 100);
   };
 
   // Calcular precisión final
   const calculateFinalAccuracy = (): number => {
-    const total = correctChars + incorrectChars;
-    return total > 0 ? Math.round((correctChars / total) * 10000) / 100 : 0;
+    console.log(`calculateFinalAccuracy - correctChars: ${correctChars}, incorrectChars: ${incorrectChars}, missedChars: ${missedChars}, extraChars: ${extraChars}`);
+    
+    // Si tenemos valores calculados, usarlos
+    if (correctChars + incorrectChars + missedChars + extraChars > 0) {
+      // Calcular la precisión considerando todos los tipos de errores con enfoque estándar
+      const totalChars = correctChars + incorrectChars + missedChars + extraChars;
+      
+      // Usar cálculo estándar: correctos / total
+      const calcAccuracy = totalChars > 0 
+        ? Math.round((correctChars / totalChars) * 10000) / 100
+        : 0;
+        
+      console.log(`Accuracy calculado (estándar): ${calcAccuracy}`);
+      return calcAccuracy;
+    }
+    
+    // Si no tenemos valores pero hay historial, usar el último valor
+    if (accuracyHistory.length > 0) {
+      const lastAcc = accuracyHistory[accuracyHistory.length - 1].accuracy;
+      console.log(`Usando último accuracy del historial: ${lastAcc}`);
+      return lastAcc;
+    }
+    
+    // Si no hay datos disponibles
+    return 0;
   };
 
   // Calcular estadísticas detalladas al finalizar
@@ -195,6 +236,11 @@ export function useTypingMetrics() {
       // Marcar el test como completado
       setTestCompleted(true);
       
+      // Asegurar que el WPM final sea válido y nunca sea menor que 1
+      const finalWpmValue = Math.max(finalWpm, 1);
+      
+      console.log(`Guardando WPM final: ${finalWpmValue}`);
+      
       // Limpiar cualquier valor incorrecto que pudiera haber sido añadido antes
       setWpmHistory(prev => {
         // Filtrar cualquier punto que esté después del tiempo final
@@ -207,13 +253,13 @@ export function useTypingMetrics() {
           // Actualizar el último punto para que tenga el valor final correcto
           return filteredHistory.map(p => {
             if (Math.abs(p.time - finalTime) < 0.2) {
-              return { time: finalTime, wpm: finalWpm };
+              return { time: finalTime, wpm: finalWpmValue };
             }
             return p;
           });
         } else {
           // Añadir un punto final si no existe
-          return [...filteredHistory, { time: finalTime, wpm: finalWpm }];
+          return [...filteredHistory, { time: finalTime, wpm: finalWpmValue }];
         }
       });
       
@@ -233,112 +279,74 @@ export function useTypingMetrics() {
           return [...filteredHistory, { time: finalTime, accuracy: finalAccuracy }];
         }
       });
+      
+      return;
     } else {
       // Actualización regular durante la prueba (solo si el test no ha terminado)
       if (!testCompleted) {
+        // Asegurar que el WPM que estamos registrando no esté limitado artificialmente
+        // Simplemente tomamos el valor tal como viene, sin aplicar suavizado excesivo
+        const currentWpm = Math.max(1, finalWpm);
+        
         setWpmHistory(prev => {
           // Si es el primer punto, simplemente añadirlo
           if (prev.length === 0) {
-            return [{ time: currentTime, wpm: finalWpm }];
+            return [{ time: currentTime, wpm: currentWpm }];
           }
           
           // Obtener el último punto
           const lastPoint = prev[prev.length - 1];
           
-          // Si han pasado al menos 0.3 segundos desde el último punto, añadir uno nuevo (más frecuente)
+          // Si han pasado al menos 0.3 segundos desde el último punto, añadir uno nuevo
           if (currentTime - lastPoint.time >= 0.3) {
-            // ------ Aplicar suavizado avanzado ------
+            // Aplicar un suavizado muy ligero para evitar saltos bruscos pero mantener la tendencia real
+            const smoothingFactor = 0.1; // Factor suave que permite cambios realistas
+            const smoothedWpm = Math.round(
+              lastPoint.wpm * (1 - smoothingFactor) + currentWpm * smoothingFactor
+            );
             
-            // 1. Obtener los últimos puntos para calcular tendencia (hasta 5 puntos)
-            const recentPoints = prev.slice(-Math.min(5, prev.length));
+            // Limitar la cantidad de puntos para evitar sobrecarga
+            const maxPoints = 120;
+            const newHistory = [...prev, { time: currentTime, wpm: smoothedWpm }];
             
-            // 2. Calcular la mediana de los últimos WPM para eliminar valores extremos
-            const recentWpms = [...recentPoints.map(p => p.wpm), finalWpm].sort((a, b) => a - b);
-            const medianWpm = recentWpms[Math.floor(recentWpms.length / 2)];
-            
-            // 3. Detectar si el valor actual es un pico anómalo
-            const isAnomaly = Math.abs(finalWpm - medianWpm) > 15; // Reducido para ser más sensible a anomalías
-            
-            // 4. Calcular el valor suavizado usando diferentes factores según contexto
-            let smoothedWpm;
-            
-            if (isAnomaly) {
-              // Si es un valor anómalo, usar un suavizado más fuerte
-              const adjustmentFactor = finalWpm > lastPoint.wpm ? 0.92 : 0.85;
-              smoothedWpm = lastPoint.wpm * adjustmentFactor + medianWpm * (1 - adjustmentFactor);
-            } else {
-              // Suavizado adaptativo basado en la volatilidad reciente
-              const recentVariance = Math.max(1, 
-                recentPoints.reduce((sum, p, i, arr) => 
-                  i > 0 ? sum + Math.abs(p.wpm - arr[i-1].wpm) : sum, 0) / (recentPoints.length - 1 || 1)
-              );
-              
-              // Factor de suavizado adaptativo - ajustado para reducir inflación
-              const adaptiveFactor = Math.min(0.3, Math.max(0.05, 1 / (recentVariance * 0.25)));
-              
-              // Bias ligeramente hacia abajo para compensar la tendencia a subir
-              const biasCorrection = finalWpm > lastPoint.wpm ? 0.97 : 1.0;
-              
-              // Aplicar suavizado exponencial con factor adaptativo y corrección
-              smoothedWpm = (lastPoint.wpm * (1 - adaptiveFactor) + finalWpm * adaptiveFactor) * biasCorrection;
-            }
-            
-            // Redondear para valores enteros
-            const roundedWpm = Math.round(smoothedWpm);
-            
-            // Limitar la cantidad de puntos para evitar sobrecarga en gráfica
-            const maxPoints = 120; // Más puntos para mayor resolución
-            const newHistory = [...prev, { time: currentTime, wpm: roundedWpm }];
-            
-            // Si hay demasiados puntos, aplicar un muestreo estratégico
             if (newHistory.length > maxPoints) {
-              // Estrategia de muestreo que preserva más detalles recientes
-              // y menos detalles antiguos
-              const preserveRecent = 30; // Preservar los últimos 30 puntos tal cual
-              const oldPoints = newHistory.slice(0, -preserveRecent);
-              const recentPoints = newHistory.slice(-preserveRecent);
+              // Estrategia simple de muestreo para mantener un número manejable de puntos
+              const samplesToKeep = Math.floor(maxPoints * 0.8);
+              const sampleRate = Math.ceil(prev.length / samplesToKeep);
               
-              // Para puntos antiguos, hacer un submuestreo adaptativo
-              const samplingRate = Math.ceil(oldPoints.length / (maxPoints - preserveRecent));
-              const sampledOldPoints = [];
+              // Conservar puntos anteriores espaciados y todos los puntos recientes
+              const recentPoints = 30;
+              const sampledPoints = [];
               
-              for (let i = 0; i < oldPoints.length; i += samplingRate) {
-                sampledOldPoints.push(oldPoints[i]);
+              for (let i = 0; i < prev.length - recentPoints; i += sampleRate) {
+                sampledPoints.push(prev[i]);
               }
               
-              // Asegurar que exista un buen enlace entre puntos viejos y recientes
-              if (sampledOldPoints.length > 0 && recentPoints.length > 0) {
-                // Si hay un salto grande de tiempo, agregar puntos intermedios
-                const lastOldTime = sampledOldPoints[sampledOldPoints.length - 1].time;
-                const firstRecentTime = recentPoints[0].time;
-                
-                if (firstRecentTime - lastOldTime > 2) {
-                  const midTime = (lastOldTime + firstRecentTime) / 2;
-                  const midWpm = (sampledOldPoints[sampledOldPoints.length - 1].wpm + recentPoints[0].wpm) / 2;
-                  sampledOldPoints.push({ time: midTime, wpm: Math.round(midWpm) });
-                }
-              }
-              
-              return [...sampledOldPoints, ...recentPoints];
+              // Añadir los puntos recientes sin muestreo
+              return [
+                ...sampledPoints,
+                ...prev.slice(prev.length - recentPoints),
+                { time: currentTime, wpm: smoothedWpm }
+              ];
             }
             
             return newHistory;
           } else {
-            // Para actualizaciones muy frecuentes, solo actualizar el último punto
-            // con un factor de suavizado aún más suave para estabilidad
-            const microSmoothingFactor = 0.05; // Reducido para mayor estabilidad
-            // Mismo ajuste que arriba para evitar inflación de valores
-            const biasCorrection = finalWpm > lastPoint.wpm ? 0.96 : 1.0;
-            const microSmoothedWpm = (lastPoint.wpm * (1 - microSmoothingFactor) + finalWpm * microSmoothingFactor) * biasCorrection;
+            // Para actualizaciones muy frecuentes, simplemente actualizar el último punto
+            // Usamos un factor de suavizado muy pequeño para estabilidad
+            const microSmoothingFactor = 0.05; 
+            const microSmoothedWpm = Math.round(
+              lastPoint.wpm * (1 - microSmoothingFactor) + currentWpm * microSmoothingFactor
+            );
             
             return [
               ...prev.slice(0, -1),
-              { time: lastPoint.time, wpm: Math.round(microSmoothedWpm) }
+              { time: lastPoint.time, wpm: microSmoothedWpm }
             ];
           }
         });
         
-        // Lógica similar para la precisión pero con parámetros ajustados
+        // Lógica similar para la precisión
         setAccuracyHistory(prev => {
           if (prev.length === 0) {
             return [{ time: currentTime, accuracy: finalAccuracy }];
@@ -347,36 +355,41 @@ export function useTypingMetrics() {
           const lastPoint = prev[prev.length - 1];
           
           if (currentTime - lastPoint.time >= 0.3) {
-            // Suavizado más sencillo para precisión ya que tiende a ser más estable
-            const smoothingFactor = 0.06; // Reducido para mayor estabilidad
-            const smoothedAccuracy = lastPoint.accuracy * (1 - smoothingFactor) + finalAccuracy * smoothingFactor;
+            const smoothingFactor = 0.1;
+            const smoothedAccuracy = Math.round(
+              lastPoint.accuracy * (1 - smoothingFactor) + finalAccuracy * smoothingFactor
+            );
             
             const maxPoints = 120;
-            const newHistory = [...prev, { time: currentTime, accuracy: Math.round(smoothedAccuracy) }];
+            const newHistory = [...prev, { time: currentTime, accuracy: smoothedAccuracy }];
             
             if (newHistory.length > maxPoints) {
-              const preserveRecent = 30;
-              const oldPoints = newHistory.slice(0, -preserveRecent);
-              const recentPoints = newHistory.slice(-preserveRecent);
+              // Mismo enfoque de muestreo que para WPM
+              const recentPoints = 30;
+              const sampleRate = Math.ceil((prev.length - recentPoints) / (maxPoints - recentPoints));
+              const sampledPoints = [];
               
-              const samplingRate = Math.ceil(oldPoints.length / (maxPoints - preserveRecent));
-              const sampledOldPoints = [];
-              
-              for (let i = 0; i < oldPoints.length; i += samplingRate) {
-                sampledOldPoints.push(oldPoints[i]);
+              for (let i = 0; i < prev.length - recentPoints; i += sampleRate) {
+                sampledPoints.push(prev[i]);
               }
               
-              return [...sampledOldPoints, ...recentPoints];
+              return [
+                ...sampledPoints,
+                ...prev.slice(prev.length - recentPoints),
+                { time: currentTime, accuracy: smoothedAccuracy }
+              ];
             }
             
             return newHistory;
           } else {
-            const microSmoothingFactor = 0.02; // Más suave para mayor estabilidad
-            const microSmoothedAccuracy = lastPoint.accuracy * (1 - microSmoothingFactor) + finalAccuracy * microSmoothingFactor;
+            const microSmoothingFactor = 0.05;
+            const microSmoothedAccuracy = Math.round(
+              lastPoint.accuracy * (1 - microSmoothingFactor) + finalAccuracy * microSmoothingFactor
+            );
             
             return [
               ...prev.slice(0, -1),
-              { time: lastPoint.time, accuracy: Math.round(microSmoothedAccuracy) }
+              { time: lastPoint.time, accuracy: microSmoothedAccuracy }
             ];
           }
         });

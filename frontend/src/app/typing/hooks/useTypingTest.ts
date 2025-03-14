@@ -1,8 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { TestDuration } from '../types';
 import { timeTexts, typingTexts } from '../constants/texts';
 import { useTypingMetrics } from './useTypingMetrics';
 import { useSupabase } from './useSupabase';
+import { mixedCodeTexts } from '../constants/code_texts';
+
+// Bandera para evitar múltiples actualizaciones durante el cambio de modo
+let isChangingMode = false;
 
 export function useTypingTest() {
   const {
@@ -42,13 +46,30 @@ export function useTypingTest() {
   const [isActive, setIsActive] = useState(false);
   const [lastMouseY, setLastMouseY] = useState(0);
   
+  // Cargar preferencias desde localStorage
+  const getDefaultTime = (): TestDuration => {
+    if (typeof window === 'undefined') return 60;
+    
+    const savedTime = localStorage.getItem('penguintype_time');
+    if (savedTime === 'competitive') return 'competitive';
+    return parseInt(savedTime || '60') as 15 | 30 | 60 | 120 || 60;
+  };
+  
+  const getDefaultCodeMode = (): boolean => {
+    if (typeof window === 'undefined') return false;
+    
+    const savedCodeMode = localStorage.getItem('penguintype_code_mode');
+    return savedCodeMode === 'true';
+  };
+  
   // Estados para la selección de tiempo y texto
-  const [selectedTime, setSelectedTime] = useState<TestDuration>(60);
+  const [selectedTime, setSelectedTime] = useState<TestDuration>(getDefaultTime());
   const [showTimeSelector, setShowTimeSelector] = useState(true);
   const [currentLines, setCurrentLines] = useState<string[]>([]);
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
   const [maxTime, setMaxTime] = useState<number | null>(null);
-  const [isCompetitiveMode, setIsCompetitiveMode] = useState(false);
+  const [isCompetitiveMode, setIsCompetitiveMode] = useState(selectedTime === 'competitive');
+  const [codeMode, setCodeMode] = useState(getDefaultCodeMode());
   
   // Estados para tooltips
   const [showAccTooltip, setShowAccTooltip] = useState(false);
@@ -98,11 +119,36 @@ export function useTypingTest() {
         setShowTimeSelector(false);
       }
       
-      // Reiniciar con ESC
+      // Reiniciar con ESC, mantener el modo actual y tiempo seleccionado
       if (e.key === 'Escape') {
-        handleReset();
-        // Mostrar el selector de tiempo nuevamente
-        setShowTimeSelector(true);
+        // Guardar el modo actual y tiempo antes de reiniciar
+        const currentCodeMode = codeMode;
+        const currentSelectedTime = selectedTime;
+        
+        // Reiniciar estados básicos
+        setText('');
+        setStartTime(null);
+        setEndTime(null);
+        setCurrentPosition(0);
+        setIsActive(false);
+        
+        // Resetear métricas y estado de usuario
+        resetMetrics();
+        resetUserState();
+        
+        // Asegurar que se mantengan los modos correctos
+        setCodeMode(currentCodeMode);
+        setSelectedTime(currentSelectedTime);
+        
+        // Generar nuevas líneas después de que los estados se hayan actualizado
+        setTimeout(() => {
+          const newTargetText = generateLines(currentSelectedTime, currentCodeMode);
+          setTargetText(newTargetText);
+          
+          // Mostrar el selector de tiempo nuevamente
+          setShowTimeSelector(true);
+        }, 0);
+        
         return;
       }
       
@@ -119,7 +165,7 @@ export function useTypingTest() {
       window.removeEventListener('keydown', handleKeyDown);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showTimeSelector, text]);
+  }, [showTimeSelector, text, codeMode, selectedTime, resetMetrics, resetUserState]);
 
   // Efecto para iniciar el contador y verificar el progreso
   useEffect(() => {
@@ -172,61 +218,53 @@ export function useTypingTest() {
   // Efecto para calcular WPM y precisión al finalizar
   useEffect(() => {
     if (startTime && endTime) {
-      const timeInMinutes = (endTime - startTime) / 60000;
-      // Para el cálculo del WPM, consideramos todas las palabras escritas en todas las líneas
-      const wordsTyped = currentLines.slice(0, currentLineIndex + 1).join(' ').split(/\s+/).length;
-      const calculatedWpm = Math.round(wordsTyped / timeInMinutes);
-      setWpm(calculatedWpm);
+      // Usar el método sofisticado de useTypingMetrics para el cálculo final
+      const finalWpm = calculateWPM(text, targetText, currentPosition, startTime, endTime);
+      setWpm(finalWpm);
 
       // Calcular precisión en base a lo que escribió el usuario vs. el texto objetivo
-      let correctCharsCount = 0;
-      let totalCharsCount = 0;
-      
-      // Si fue una prueba completa (todas las líneas)
-      if (currentLineIndex === currentLines.length - 1) {
-        for (let i = 0; i < text.length; i++) {
-          if (text[i] === targetText[i]) {
-            correctCharsCount++;
+      const finalAccuracy = calculateAccuracy(text, targetText);
+      setAccuracy(finalAccuracy);
+    }
+  }, [endTime, startTime, text, targetText, currentPosition, calculateWPM, calculateAccuracy]);
+
+  // Manejar cuando se termina de escribir todo el texto
+  useEffect(() => {
+    // Solo proceder si estamos en un test activo
+    if (isActive && startTime && !endTime && text.length > 0) {
+      // Comprobar si hemos llegado al final del texto
+      if (text.length >= targetText.length) {
+        // Marca el tiempo final
+        const finalTime = Date.now();
+        setEndTime(finalTime);
+        setIsActive(false);
+
+        // Calcular el WPM y precisión finales
+        const finalWpm = calculateWPM(text, targetText, text.length, startTime, finalTime);
+        const finalAccuracy = calculateAccuracy(text, targetText);
+        
+        console.log('Finalizando prueba - Calculando estadísticas detalladas');
+        
+        // Primero calcular estadísticas detalladas
+        calculateDetailedStats(text, targetText);
+        
+        // Luego actualizar historial con el tiempo final
+        updateHistory(finalTime, finalTime, finalWpm, finalAccuracy);
+        
+        // Enviar automáticamente la puntuación
+        if (startTime && finalTime) {
+          const finalSeconds = (finalTime - startTime) / 1000;
+          // Solo enviar si la prueba duró al menos 10 segundos para evitar puntuaciones falsas
+          if (finalSeconds >= 10) {
+            handleSubmitScoreAutomatically(finalWpm, finalAccuracy);
           }
-          totalCharsCount++;
         }
       }
-      
-      const calculatedAccuracy = Math.round((correctCharsCount / totalCharsCount) * 100);
-      setAccuracy(calculatedAccuracy);
-    }
-  }, [endTime, startTime, text, targetText, currentLineIndex, currentLines]);
-
-  // Efecto que se ejecuta cuando termina la prueba
-  useEffect(() => {
-    // Solo ejecutar cuando endTime cambia de null a un valor (test terminado)
-    if (endTime && startTime) {
-      // Calcular los valores finales una vez
-      const finalTime = (endTime - startTime) / 1000;
-      const finalWpm = calculateCurrentWPM();
-      const finalAccuracy = calculateAccuracy(text, targetText);
-      
-      // Actualizar el WPM y Accuracy una última vez, con los valores finales correctos
-      setWpm(finalWpm);
-      setAccuracy(finalAccuracy);
-      
-      // Actualizar el historial con los valores finales
-      updateHistory(finalTime, finalTime, finalWpm, finalAccuracy);
-      
-      // Calcular estadísticas detalladas
-      calculateDetailedStats(text, targetText);
-      
-      // Enviar puntaje automáticamente al finalizar
-      setTimeout(() => {
-        if (!hasSubmittedScore) {
-          handleSubmitScoreAutomatically(finalWpm, finalAccuracy);
-        }
-      }, 1000);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [endTime]);
+  }, [text, targetText, isActive, startTime, endTime]);
 
-  // Efecto que actualiza durante la prueba para registrar la evolución del WPM
+  // Efecto para actualizar la prueba
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     
@@ -281,18 +319,77 @@ export function useTypingTest() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, startTime, endTime, text, currentPosition]);
 
-  // Función para cambiar el tiempo seleccionado
-  const handleTimeChange = (time: TestDuration) => {
-    // Reiniciar antes de cambiar el tiempo
-    handleReset();
+  // Función para generar líneas aleatorias para la prueba de escritura
+  const generateLines = useCallback((time: TestDuration, isCodeMode: boolean = false) => {
+    let targetText = '';
+    let availableTexts: string[] = [];
+  
+    // Imprimir valores para debug
+    console.log(`Generando líneas para tiempo: ${time}, modo código: ${isCodeMode}`);
     
-    if (time === 'competitive') {
-      setIsCompetitiveMode(true);
-      setSelectedTime(120); // Por defecto, usamos 120 segundos para el modo competitivo
+    // Seleccionar la fuente de textos según el modo actual
+    if (isCodeMode) {
+      // Obtener los textos para el tiempo especificado, con un valor por defecto de array vacío
+      const textsForTime = mixedCodeTexts[time] as string[] | undefined;
+      const textsForBackup = mixedCodeTexts[30] as string[] | undefined;
+      
+      // Verificar si hay textos disponibles para este tiempo en modo código
+      if (textsForTime && textsForTime.length > 0) {
+        availableTexts = textsForTime;
+      } else {
+        // Si no hay textos para este tiempo específico, usar los de 30 segundos como respaldo
+        availableTexts = textsForBackup || [];
+      }
+      console.log(`Usando mixedCodeTexts para tiempo ${time}. Textos disponibles: ${availableTexts.length}`);
     } else {
-      setIsCompetitiveMode(false);
-      setSelectedTime(time);
+      // El tipo timeTexts ya tiene una propiedad 'competitive' y debemos usarla
+      if (time === 'competitive') {
+        availableTexts = timeTexts['competitive']; // Usar textos específicos del modo competitivo
+      } else {
+        availableTexts = timeTexts[time as 15 | 30 | 60 | 120];
+      }
+      console.log(`Usando timeTexts para tiempo ${time} modo normal. Textos disponibles: ${availableTexts.length}`);
     }
+    
+    // Verificación adicional por seguridad
+    if (!availableTexts || availableTexts.length === 0) {
+      console.warn(`No se encontraron textos para tiempo: ${time}, modo código: ${isCodeMode}. Usando textos de respaldo.`);
+      availableTexts = isCodeMode ? (mixedCodeTexts[30] || []) : timeTexts[30];
+    }
+    
+    // Seleccionar un texto aleatorio
+    if (availableTexts.length > 0) {
+      const randomIndex = Math.floor(Math.random() * availableTexts.length);
+      targetText = availableTexts[randomIndex] || '';
+      console.log(`Texto seleccionado de ${targetText.substring(0, 30)}...`);
+    } else {
+      // Texto de respaldo final si todo lo demás falla
+      targetText = "Error al cargar textos. Por favor, intenta recargar la página.";
+      console.error("No se pudieron cargar textos para la prueba de escritura.");
+    }
+    
+    return targetText;
+  }, []);
+
+  // Función para cambiar el tiempo de prueba
+  const handleTimeChange = (time: TestDuration) => {
+    // No permitir cambios durante una prueba activa
+    if (isActive) return;
+    
+    setSelectedTime(time);
+    setIsCompetitiveMode(time === 'competitive');
+    
+    // Guardar preferencia en localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('penguintype_time', time.toString());
+    }
+    
+    // Generar nuevas líneas de texto para el tiempo seleccionado
+    const newTargetText = generateLines(time, codeMode);
+    setTargetText(newTargetText);
+    
+    // Asegurarse de que la prueba comience desde cero
+    handleReset();
   };
 
   // Manejar la entrada de texto
@@ -319,35 +416,47 @@ export function useTypingTest() {
 
   // Función para calcular el WPM actual
   const calculateCurrentWPM = () => {
-    return calculateWPM(text, targetText, currentPosition, startTime, endTime);
+    // Si el test ha terminado, mostrar el valor final calculado
+    if (endTime && startTime) {
+      // Calcular directamente con la longitud completa del texto
+      const finalWpm = calculateWPM(text, targetText, text.length, startTime, endTime);
+      console.log(`WPM final calculado: ${finalWpm}`);
+      return finalWpm;
+    }
+    
+    // Si el test está en progreso pero sin posición actual válida, retornar 0
+    if (!currentPosition) return 0;
+    
+    // De lo contrario, calcular el WPM actual en tiempo real
+    const currentWpm = calculateWPM(text, targetText, currentPosition, startTime, null);
+    return currentWpm;
   };
 
   // Resetear el test
   const handleReset = () => {
+    // Si estamos en proceso de cambiar el modo, ignorar resets adicionales
+    if (isChangingMode) {
+      console.log('Reset ignorado durante cambio de modo');
+      return;
+    }
+    
+    // Resetear todos los estados y métricas
     setText('');
     setStartTime(null);
     setEndTime(null);
-    setWpm(null);
-    setAccuracy(null);
     setCurrentPosition(0);
     setIsActive(false);
+    
+    // Resetear métricas y estado de usuario
     resetMetrics();
-    setShowAccTooltip(false);
-    setShowCharTooltip(false);
     resetUserState();
     
-    // Generar nuevas líneas según el tiempo seleccionado
-    if (typeof selectedTime === 'number') {
-      const randomIndex = Math.floor(Math.random() * timeTexts[selectedTime].length);
-      setCurrentLines([timeTexts[selectedTime][randomIndex]]);
-      setCurrentLineIndex(0);
-      setTargetText(timeTexts[selectedTime][randomIndex]);
-    }
+    // Guardar el modo actual para usarlo al generar el nuevo texto
+    const currentCodeMode = codeMode;
     
-    // Enfocar el textarea
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
+    // Generar nuevas líneas según el tiempo seleccionado y el modo actual
+    const newTargetText = generateLines(selectedTime, currentCodeMode);
+    setTargetText(newTargetText);
   };
 
   // Enviar puntuación automáticamente
@@ -380,8 +489,72 @@ export function useTypingTest() {
     }
   };
 
+  // Efecto para regenerar el texto cuando cambia el modo código
+  useEffect(() => {
+    // No cambiar el texto durante una prueba activa
+    if (isActive) return;
+    
+    // Generar nuevo texto basado en el modo código actual
+    console.log(`Efecto de cambio de modo código ejecutado. Modo actual: ${codeMode ? 'código' : 'normal'}, tiempo: ${selectedTime}`);
+    
+    // Pequeño retraso para asegurar que los estados se han actualizado
+    const timeoutId = setTimeout(() => {
+      const newText = generateLines(selectedTime, codeMode);
+      console.log(`Nuevo texto generado para modo ${codeMode ? 'código' : 'normal'}, tiempo ${selectedTime}: ${newText.substring(0, 50)}...`);
+      setTargetText(newText);
+      
+      // Forzar un refresco del componente
+      setText('');
+      setCurrentPosition(0);
+    }, 50);
+    
+    return () => clearTimeout(timeoutId);
+  }, [codeMode, selectedTime, generateLines, isActive]);
+
+  // Función para establecer el modo código con protección contra actualizaciones múltiples
+  const setCodeModeWithProtection = (newValue: boolean | ((prevState: boolean) => boolean)) => {
+    // Si ya estamos en proceso de cambiar el modo, no hacer nada
+    if (isChangingMode) return;
+    
+    // Activar la bandera
+    isChangingMode = true;
+    
+    // Llamar a la función original
+    if (typeof newValue === 'function') {
+      setCodeMode(prevMode => {
+        const result = newValue(prevMode);
+        return result;
+      });
+    } else {
+      setCodeMode(newValue);
+    }
+    
+    // Desactivar la bandera después de un tiempo
+    setTimeout(() => {
+      isChangingMode = false;
+    }, 300); // Un tiempo suficiente para que todas las actualizaciones se completen
+  };
+
+  // Efecto para manejar cambios en el modo código
+  useEffect(() => {
+    // No hacer nada en la primera renderización
+    if (codeMode === getDefaultCodeMode()) return;
+    
+    // Si no estamos en una prueba activa, forzar un reset para actualizar el texto
+    if (!isActive) {
+      // Usar setTimeout para asegurar que los estados se hayan actualizado completamente
+      setTimeout(() => {
+        const currentCodeMode = codeMode;
+        console.log(`Forzando reset después de cambio de modo a: ${currentCodeMode ? 'código' : 'normal'}`);
+        
+        // Generar nuevas líneas con el modo actualizado
+        const newTargetText = generateLines(selectedTime, currentCodeMode);
+        setTargetText(newTargetText);
+      }, 100);
+    }
+  }, [codeMode, isActive, selectedTime, generateLines]);
+
   return {
-    // Estados
     text,
     targetText,
     startTime,
@@ -409,12 +582,8 @@ export function useTypingTest() {
     hasSubmittedScore,
     isInTop25,
     isSubmittingScore,
-    
-    // Referencias
     inputRef,
     textContainerRef,
-    
-    // Funciones
     setText,
     setShowTimeSelector,
     setShowAccTooltip,
@@ -426,6 +595,8 @@ export function useTypingTest() {
     handleInput,
     handleFocus,
     handleReset,
-    handleSubmitScore
+    handleSubmitScore,
+    codeMode,
+    setCodeMode: setCodeModeWithProtection,
   };
 } 

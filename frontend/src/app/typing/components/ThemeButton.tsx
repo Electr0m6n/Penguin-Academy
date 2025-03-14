@@ -118,8 +118,8 @@ export function ThemeButton({
   // Estilos condicionales basados en la posición
   const containerClassName = position === 'top' 
     ? `relative` 
-    : `fixed bottom-6 right-6 z-50 transition-opacity duration-300 ${
-        isActive ? 'opacity-0 pointer-events-none' : 'opacity-100'
+    : `fixed bottom-6 right-6 z-[100] transition-opacity duration-300 ${
+        isActive ? 'opacity-10' : 'opacity-100'
       }`;
   
   // Clase para la posición del selector

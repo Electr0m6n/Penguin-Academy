@@ -71,8 +71,18 @@ export const ResultsChart: React.FC<ResultsChartProps> = ({
         <div className="flex flex-col items-start mb-6 md:mb-0">
           <div className="text-gray-400 text-sm font-mono">wpm</div>
           <div className="text-6xl font-bold font-mono" style={{ color: safeStyles.color }}>
-            {calculateCurrentWPM()}
+            {wpmHistory.length > 0 ? 
+              wpmHistory[wpmHistory.length - 1].wpm : 
+              calculateCurrentWPM()}
           </div>
+          
+          {/* Añadir información de depuración solo visible si hay anomalías */}
+          {wpmHistory.length > 0 && wpmHistory[wpmHistory.length - 1].wpm < 10 && (
+            <div className="text-xs text-red-500 mt-1">
+              WPM bajo detectado: {wpmHistory[wpmHistory.length - 1].wpm} 
+              (Hist: {wpmHistory.length})
+            </div>
+          )}
           
           {/* Precisión con tooltip */}
           <div className="text-gray-400 text-sm mt-4 font-mono">acc</div>
@@ -82,7 +92,8 @@ export const ResultsChart: React.FC<ResultsChartProps> = ({
             onMouseEnter={() => setShowAccTooltip(true)}
             onMouseLeave={() => setShowAccTooltip(false)}
           >
-            {calculateFinalAccuracy()}%
+            {calculateFinalAccuracy() || 
+              (accuracyHistory.length > 0 ? accuracyHistory[accuracyHistory.length - 1].accuracy : 0)}%
             
             {/* Tooltip de precisión */}
             {showAccTooltip && (
@@ -90,7 +101,8 @@ export const ResultsChart: React.FC<ResultsChartProps> = ({
                 className="absolute left-0 top-0 -translate-y-full p-2 bg-black text-white text-sm rounded font-mono z-50"
                 style={{ minWidth: '180px' }}
               >
-                {calculateFinalAccuracy()}%<br />
+                {calculateFinalAccuracy() || 
+                  (accuracyHistory.length > 0 ? accuracyHistory[accuracyHistory.length - 1].accuracy : 0)}%<br />
                 {correctChars} correct<br />
                 {incorrectChars} incorrect
               </div>
