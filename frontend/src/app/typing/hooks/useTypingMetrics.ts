@@ -107,7 +107,6 @@ export function useTypingMetrics() {
     
     // Si es un cálculo final, asegurar que sea al menos 1
     if (endTime) {
-      console.log(`WPM calculado (final): ${wpm}`);
       return Math.max(1, Math.round(wpm));
     }
     
@@ -177,6 +176,10 @@ export function useTypingMetrics() {
 
   // Calcular estadísticas detalladas al finalizar
   const calculateDetailedStats = (text: string, targetText: string) => {
+    console.log('Calculando estadísticas detalladas...');
+    console.log('Texto escrito (longitud):', text.length);
+    console.log('Texto objetivo (longitud):', targetText.length);
+    
     let correct = 0;
     let incorrect = 0;
     let missed = 0;
@@ -197,6 +200,14 @@ export function useTypingMetrics() {
       }
     }
     
+    console.log('Estadísticas calculadas:', {
+      correct,
+      incorrect,
+      missed,
+      extra,
+      total: correct + incorrect + missed + extra
+    });
+    
     setCorrectChars(correct);
     setIncorrectChars(incorrect);
     setMissedChars(missed);
@@ -214,11 +225,13 @@ export function useTypingMetrics() {
       
       // Consistencia como porcentaje (100% - coeficiente de variación normalizado)
       const consistency = Math.max(0, Math.min(100, 100 - (stdDev / avgWpm * 100)));
+      console.log('Consistencia calculada:', Math.round(consistency));
       setConsistency(Math.round(consistency));
     }
     
     // Marcar el test como completado
     setTestCompleted(true);
+    console.log('Test marcado como completado');
   };
 
   // Actualizar historial de WPM y precisión
@@ -229,17 +242,26 @@ export function useTypingMetrics() {
     finalAccuracy: number
   ) => {
     // No actualizar si el test ya ha sido completado y no es la actualización final
-    if (testCompleted && !finalTime) return;
+    if (testCompleted && !finalTime) {
+      console.log('Actualización ignorada: test ya completado y no es actualización final');
+      return;
+    }
     
     // Si es la actualización final
     if (finalTime) {
+      console.log('Actualizando historial con tiempo final:', {
+        finalTime,
+        finalWpm,
+        finalAccuracy
+      });
+      
       // Marcar el test como completado
       setTestCompleted(true);
       
       // Asegurar que el WPM final sea válido y nunca sea menor que 1
       const finalWpmValue = Math.max(finalWpm, 1);
       
-      console.log(`Guardando WPM final: ${finalWpmValue}`);
+      console.log(`Guardando WPM final: ${finalWpmValue}, Accuracy final: ${finalAccuracy}`);
       
       // Limpiar cualquier valor incorrecto que pudiera haber sido añadido antes
       setWpmHistory(prev => {
@@ -280,6 +302,7 @@ export function useTypingMetrics() {
         }
       });
       
+      console.log('Historial actualizado con valores finales');
       return;
     } else {
       // Actualización regular durante la prueba (solo si el test no ha terminado)

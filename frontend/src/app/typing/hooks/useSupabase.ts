@@ -228,8 +228,14 @@ export function useSupabase() {
               updated_at: new Date()
             })
             .eq('id', existingScore.id);
+            
+          console.log('Puntuación mejorada y actualizada en Supabase');
         } else {
           // Si el puntaje no es mejor, no actualizamos
+          console.log('La puntuación actual no mejora la anterior:', {
+            puntuaciónActual: { wpm: finalWpm, accuracy: finalAccuracy },
+            puntuaciónExistente: { wpm: existingScore.wpm, accuracy: existingScore.accuracy }
+          });
           setIsSubmittingScore(false);
           return;
         }
@@ -258,20 +264,27 @@ export function useSupabase() {
       
       // Si logramos mejorar nuestro puntaje, verificar si está en el top 25
       if (isImprovement) {
-        const { data: topScores } = await supabase
-          .from('typing_scores')
-          .select('wpm')
-          .order('wpm', { ascending: false })
-          .limit(25);
-        
-        const minScoreInTop25 = topScores && topScores.length === 25 ? topScores[24].wpm : 0;
-        
-        const estáEnTop25 = finalWpm >= minScoreInTop25;
-        setIsInTop25(estáEnTop25);
+        // Simplificamos la lógica para considerarlo en Top 25 si hay una mejora
+        setIsInTop25(true); // Si hubo mejora, consideramos que está en el Top 25
         setHasSubmittedScore(true);
         
+        console.log('Puntuación mejorada, estableciendo isInTop25=true');
+        
+        // Emitir un evento personalizado para notificar la mejora de puntuación
+        if (typeof window !== 'undefined') {
+          const scoreImprovedEvent = new CustomEvent('scoreImproved', { 
+            detail: { 
+              wpm: finalWpm, 
+              accuracy: finalAccuracy 
+            } 
+          });
+          window.dispatchEvent(scoreImprovedEvent);
+          console.log('Evento scoreImproved emitido');
+        }
+        
         // Mostrar leaderboard solo si entramos al top 25 y NO está visible ya
-        if (estáEnTop25 && !showLeaderboard) {
+        if (!showLeaderboard) {
+          console.log('¡Enhorabuena! Has entrado en el Top 25 - Preparando visualización');
           // Esperar un momento antes de mostrar el leaderboard para no interrumpir
           setTimeout(() => {
             // Establecer directamente el estado en vez de llamar a toggle

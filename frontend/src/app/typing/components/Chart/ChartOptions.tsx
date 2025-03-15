@@ -2,8 +2,8 @@
 
 import { useCallback } from 'react';
 import { WpmDataPoint, AccuracyDataPoint } from '../../types';
-import { Theme } from '../../types';
 import { getChartData as getFormattedChartData } from './getChartData';
+import { ChartOptions } from 'chart.js';
 
 interface ChartProps {
   wpmHistory: WpmDataPoint[];
@@ -13,15 +13,15 @@ interface ChartProps {
     color: string;
   };
   isHydrated: boolean;
-  themes: Theme[];
-  currentTheme: string;
+  isResultsChart?: boolean; // Nuevo parámetro para identificar si es el gráfico de resultados
 }
 
 export const useChartConfig = ({
   wpmHistory,
   accuracyHistory,
   safeStyles,
-  isHydrated
+  isHydrated,
+  isResultsChart = false // Por defecto es falso
 }: ChartProps) => {
   // Función para obtener datos del gráfico
   const getChartData = useCallback(() => {
@@ -67,172 +67,218 @@ export const useChartConfig = ({
     return 20;
   }, [wpmHistory]);
 
-  // Opciones de la gráfica - actualizadas para usar safeStyles
-  const chartOptions = {
+  // Opciones de la gráfica mejoradas para un aspecto más moderno
+  const chartOptions: ChartOptions<'line'> = {
     responsive: true,
     maintainAspectRatio: false,
-    devicePixelRatio: 1, // Forzar una resolución constante
+    // Añadir animación para la gráfica de resultados
+    animation: {
+      duration: isResultsChart ? 1200 : 800, // Animación más larga para resultados
+      easing: 'easeOutQuad'
+    },
+    
+    // Configuración de escalas
     scales: {
       y: {
-        type: 'linear' as const,
+        beginAtZero: true,
         min: 0,
         max: getYAxisMax(),
         title: {
           display: true,
-          text: 'Words per Minute',
-          color: `${safeStyles.color}AA`,
+          text: 'WPM',
+          color: `${safeStyles.color}CC`,
           font: {
-            family: 'monospace',
+            family: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace',
             size: 12,
-            weight: 'bold' as 'bold' | 'normal'
+            weight: 'bold'
           },
-          position: 'left' as const,
-          rotation: -90 // Girar el texto verticalmente
         },
         grid: {
-          color: `${safeStyles.color}20`,
-          drawBorder: false,
-          lineWidth: 1,
+          color: `${safeStyles.color}15`,
+          lineWidth: 0.5,
+          // Mejoramos la grilla para resultados sin usar propiedades inválidas
+          display: true,
         },
         ticks: {
           color: `${safeStyles.color}AA`,
           font: {
-            family: 'monospace',
-            weight: 'bold' as 'bold' | 'normal'
+            family: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace',
+            weight: 'bold',
+            size: 10
           },
           stepSize: getYAxisStepSize(),
-          padding: 10
-        },
-        border: {
-          display: true,
-          color: `${safeStyles.color}60`,
-          width: 1
+          // Mostrar más información en las etiquetas para la gráfica de resultados
+          callback: function(value) {
+            return value.toString();
+          }
         }
       },
       y1: {
-        type: 'linear' as const,
+        type: 'linear',
         display: true,
-        position: 'right' as const,
-        beginAtZero: true, // Asegurarse de que comience en 0
+        position: 'right',
+        beginAtZero: true,
         min: 0,
-        max: 100, // Accuracy siempre de 0 a 100%
+        max: 100,
         title: {
           display: true,
-          text: 'Accuracy (%)',
-          color: safeStyles.color,
+          text: 'Precisión %',
+          color: `${safeStyles.color}CC`,
           font: {
-            family: 'monospace',
+            family: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace',
             size: 12,
-            weight: 'bold' as 'bold' | 'normal'
-          },
-          position: 'right' as const,
-          rotation: 90 // Girar el texto verticalmente
-        },
-        grid: {
-          drawOnChartArea: false, // No dibujar líneas de cuadrícula para este eje
-        },
-        ticks: {
-          color: safeStyles.color,
-          font: {
-            family: 'monospace',
-            weight: 'bold' as 'bold' | 'normal'
-          },
-          stepSize: 20, // Mostrar marcas cada 20%
-          padding: 10,
-          callback: function(tickValue: number | string) {
-            return tickValue + '%'; // Agregar el símbolo de porcentaje a las etiquetas
+            weight: 'bold'
           }
         },
-        border: {
+        grid: {
+          drawOnChartArea: false,
           display: true,
+        },
+        ticks: {
           color: `${safeStyles.color}AA`,
-          width: 1
+          font: {
+            family: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace',
+            weight: 'bold',
+            size: 10
+          },
+          callback: function(value: string | number) {
+            return value + '%';
+          }
         }
       },
       x: {
         grid: {
           color: `${safeStyles.color}10`,
-          drawBorder: false,
-          lineWidth: 1,
+          lineWidth: 0.5,
+          display: isResultsChart // Mostrar cuadrícula X sólo en resultados finales
         },
         ticks: {
-          display: false, // Ocultar etiquetas del eje X para una apariencia más limpia
+          display: isResultsChart, // Mostrar etiquetas de tiempo solo en resultados finales
+          maxRotation: 0,
           font: {
-            family: 'monospace'
+            family: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace',
+            weight: 'bold',
+            size: 9
+          },
+          color: `${safeStyles.color}80`,
+          autoSkip: true,
+          maxTicksLimit: 6,
+          callback: function(value, index, ticks) {
+            // Mostrar solo algunos valores de segundos para mantener clara la visualización
+            if (index === 0 || index === ticks.length - 1 || index % Math.ceil(ticks.length / 6) === 0) {
+              return this.getLabelForValue(Number(value)).replace('s', '') + 's';
+            }
+            return '';
           }
-        },
-        border: {
-          display: false
         }
       }
     },
+    
+    // Configuración de plugins
     plugins: {
       legend: {
-        display: true, // Mostrar la leyenda para distinguir WPM y precisión
-        position: 'top' as const,
-        align: 'end' as const,
+        display: true,
+        position: 'top',
+        align: 'end',
         labels: {
-          color: `${safeStyles.color}AA`,
+          color: `${safeStyles.color}DD`,
           font: {
-            family: 'monospace',
-            size: 10
+            family: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace',
+            size: 11,
+            weight: 'bold'
           },
-          boxWidth: 10,
-          padding: 5
-        },
+          usePointStyle: true,
+          pointStyle: 'circle',
+          padding: isResultsChart ? 15 : 10, // Más espaciado para resultados
+          boxWidth: isResultsChart ? 10 : 8, // Íconos más grandes para resultados
+        }
       },
       tooltip: {
         enabled: true,
-        mode: 'index' as const,
+        mode: 'index',
         intersect: false,
         backgroundColor: `${safeStyles.backgroundColor}EE`,
         titleColor: safeStyles.color,
         bodyColor: safeStyles.color,
         borderColor: `${safeStyles.color}40`,
         borderWidth: 1,
-        cornerRadius: 4,
-        padding: 8,
+        padding: isResultsChart ? 12 : 8,
+        cornerRadius: 6,
         titleFont: {
-          family: 'monospace',
-          weight: 'bold' as 'bold' | 'normal',
-          size: 12,
+          family: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace',
+          weight: 'bold',
+          size: isResultsChart ? 13 : 11,
         },
         bodyFont: {
-          family: 'monospace',
-          size: 12,
-          weight: 'bold' as 'bold' | 'normal'
+          family: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace',
+          weight: 'normal',
+          size: isResultsChart ? 12 : 10,
         },
         callbacks: {
-          title: function(tooltipItems: Array<{dataIndex: number}>) {
-            // Convertir el índice de tiempo a segundos
+          title: function(tooltipItems) {
             if (tooltipItems.length > 0) {
               const dataIndex = tooltipItems[0].dataIndex;
               const validWpmEntry = wpmHistory[dataIndex];
-              return validWpmEntry ? `${validWpmEntry.time.toFixed(1)}s` : '';
+              if (validWpmEntry) {
+                // Formato mejorado para el título del tooltip
+                return isResultsChart 
+                  ? `Tiempo: ${validWpmEntry.time.toFixed(1)} segundos`
+                  : `${validWpmEntry.time.toFixed(1)}s`;
+              }
             }
             return '';
           },
-          label: function(context: {dataset: {label?: string}, parsed: {y: number}}) {
+          label: function(context) {
             const label = context.dataset.label || '';
             const value = context.parsed.y;
             
+            // Formato mejorado para las etiquetas
             if (label === 'WPM') {
-              return `WPM: ${value}`;
+              return `${label}: ${Math.round(value)} palabras/min`;
             } else if (label === 'Accuracy') {
-              return `Precisión: ${value}%`;
+              return `Precisión: ${Math.round(value)}%`;
             }
             return `${label}: ${value}`;
           },
-        },
-        displayColors: false,
+          // Footer opcional para resultados
+          footer: function(tooltipItems) {
+            if (!isResultsChart || tooltipItems.length <= 0) return '';
+            
+            // Calcular progreso como porcentaje del tiempo total
+            const dataIndex = tooltipItems[0].dataIndex;
+            const totalPoints = wpmHistory.length;
+            const progressPercent = Math.round((dataIndex / (totalPoints - 1)) * 100);
+            
+            return `Progreso: ${progressPercent}% completado`;
+          }
+        }
       }
     },
-    animation: {
-      duration: 0 // Duración cero para eliminar todas las animaciones
+    
+    // Configuración de elementos
+    elements: {
+      point: {
+        radius: 0, // Puntos nunca visibles por defecto, incluso en la gráfica de resultados
+        hoverRadius: isResultsChart ? 6 : 4, // Puntos más grandes al hacer hover en resultados
+        hitRadius: isResultsChart ? 10 : 5, // Área de detección de click/hover más grande en resultados
+        // Efecto de brillo al hacer hover
+        hoverBackgroundColor: 'white',
+        hoverBorderWidth: 2
+      },
+      line: {
+        tension: 0.4, // Líneas más suaves
+        borderWidth: isResultsChart ? 3.5 : 3, // Líneas más gruesas para resultados
+        fill: true, // Rellenar el área bajo la línea
+        capBezierPoints: true // Mejorar la visualización de las curvas
+      }
     },
+    
+    // Interacción
     interaction: {
-      mode: 'nearest' as const,
+      mode: 'nearest',
       intersect: false,
+      axis: 'x',
+      includeInvisible: true // Cambiado para mejorar la detección de puntos incluso cuando no son visibles
     }
   };
 
