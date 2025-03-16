@@ -1023,7 +1023,7 @@ export default function TypingPage() {
                       borderColor: `${safeStyles.color}50`,
                       background: `linear-gradient(to bottom, ${safeStyles.color}15, ${safeStyles.color}05)`,
                     }}
-                    onClick={() => resumeTest()}
+                    onClick={resumeTest}
                     whileHover={{ 
                       scale: 1.05, 
                       boxShadow: `0 0 20px ${safeStyles.color}40`,
@@ -1266,6 +1266,37 @@ export default function TypingPage() {
             {error}
           </div>
         )}
+        
+        {/* Indicador discreto de ESC para reiniciar */}
+        <AnimatePresence>
+          {(isActive || endTime) && (
+            <motion.div 
+              key="esc-indicator"
+              className="fixed bottom-4 left-1/2 transform -translate-x-1/2 px-3 py-1 rounded-full bg-black/20 backdrop-blur-sm border border-white/5 z-30 text-xs font-mono flex items-center gap-1.5 shadow-sm"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ 
+                opacity: 0.5, 
+                y: 0,
+                boxShadow: [
+                  `0 0 8px ${safeStyles.color}05`,
+                  `0 0 12px ${safeStyles.color}10`,
+                  `0 0 8px ${safeStyles.color}05`
+                ]
+              }}
+              exit={{ opacity: 0, y: 10 }}
+              transition={{ 
+                opacity: { duration: 0.6 },
+                boxShadow: { repeat: Infinity, duration: 3, ease: "easeInOut" },
+                y: { duration: 0.5 }
+              }}
+              style={{ color: `${safeStyles.color}` }}
+              whileHover={{ opacity: 0.85, scale: 1.02 }}
+            >
+              <kbd className="px-1.5 py-0.5 rounded bg-black/30 text-white/70 border border-white/10 text-[9px] font-semibold">ESC</kbd>
+              <span className="opacity-80">{endTime ? "Nuevo test" : "Reiniciar"}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )

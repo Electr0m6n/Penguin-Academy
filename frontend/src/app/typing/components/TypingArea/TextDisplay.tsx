@@ -1,7 +1,9 @@
 'use client'
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Theme } from '../../types';
+import { motion } from 'framer-motion';
+import { Code2, Terminal, Zap } from 'lucide-react';
 
 interface TextDisplayProps {
   text: string;
@@ -36,6 +38,12 @@ export const TextDisplay: React.FC<TextDisplayProps> = ({
 }) => {
   // Almacenar la versión anterior del texto objetivo para detectar cambios
   const prevTargetTextRef = React.useRef(targetText);
+
+  // Referencias para el auto-scroll
+  const codeEditorRef = useRef<HTMLDivElement | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const lastScrollPositionRef = useRef<number>(0);
+  const cursorLineRef = useRef<number>(0);
   
   // Efecto para detectar y responder a cambios en el texto objetivo
   React.useEffect(() => {
@@ -57,6 +65,61 @@ export const TextDisplay: React.FC<TextDisplayProps> = ({
       prevTargetTextRef.current = targetText;
     }
   }, [targetText, codeMode, textContainerRef]);
+  
+  // Efecto para implementar el auto-scroll
+  useEffect(() => {
+    if (!codeMode || !scrollContainerRef.current) return;
+    
+    // Calcular en qué línea está el cursor actual
+    const lines = targetText.trim().split('\n');
+    let currentCharCount = 0;
+    let currentLineIndex = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      const lineLength = lines[i].length + 1; // +1 para el salto de línea
+      
+      if (currentCharCount + lineLength > text.length) {
+        currentLineIndex = i;
+        break;
+      }
+      
+      currentCharCount += lineLength;
+    }
+    
+    // Guardar la línea actual del cursor
+    cursorLineRef.current = currentLineIndex;
+    
+    // Si el contenedor tiene scrollbar y el cursor llegó a cierta línea dentro de la ventana visible
+    const container = scrollContainerRef.current;
+    const containerHeight = container.clientHeight;
+    
+    // Calcular la altura aproximada de cada línea en píxeles
+    const lineHeight = showRealTimeChart ? 28 : 32; // Basado en las clases leading-7 y leading-8
+    
+    // Calcular líneas visibles en la ventana
+    const visibleLines = Math.floor(containerHeight / lineHeight);
+    
+    // Número de líneas actualmente visibles
+    const halfVisibleLines = Math.floor(visibleLines / 2);
+    
+    // Si el cursor está en la segunda mitad de las líneas visibles, hacer auto-scroll
+    if (currentLineIndex > halfVisibleLines) {
+      // Calcular la posición de scroll ideal para mantener el cursor en el centro
+      const idealScrollTop = Math.max(0, (currentLineIndex - halfVisibleLines) * lineHeight);
+      
+      // Aplicar solo si es diferente (para evitar scroll innecesario)
+      if (Math.abs(idealScrollTop - container.scrollTop) > lineHeight) {
+        // Scroll suave a la posición calculada
+        container.scrollTo({
+          top: idealScrollTop,
+          behavior: 'smooth'
+        });
+        
+        // Guardar la última posición de scroll
+        lastScrollPositionRef.current = idealScrollTop;
+      }
+    }
+  }, [text, targetText, codeMode, showRealTimeChart]);
   
   // Memorizar el resultado para evitar recálculos innecesarios
   const isTextConcept = React.useMemo(
@@ -102,10 +165,82 @@ export const TextDisplay: React.FC<TextDisplayProps> = ({
       if (!showRealTimeChart) {
         return 'max-w-[95%]';
       }
-      return 'max-w-[90%]';
+      return 'max-w-[92%]';
     }
     // Para texto normal o conceptos, mantener el ancho original de 80%
     return 'max-w-[80%]';
+  };
+
+  // Función mejorada para el resaltado de sintaxis
+  const getSyntaxHighlightedStyle = (line: string, char: string, charIdx: number, globalIndex: number) => {
+    const style: React.CSSProperties = { color: '#d4d4d4' }; // Color por defecto
+    
+    // Estilizar cada carácter según el estado de escritura
+    if (isHydrated) {
+      if (globalIndex < text.length) {
+        // Carácter ya escrito
+        if (text[globalIndex] === char) {
+          // Carácter correcto
+          style.color = '#8BE98B'; // Verde más brillante
+          style.textShadow = '0 0 3px rgba(139, 233, 139, 0.4)';
+        } else {
+          // Carácter incorrecto
+          style.color = '#FF5555'; // Rojo más brillante
+          style.textDecoration = 'underline';
+          style.textDecorationColor = '#FF5555';
+          style.textShadow = '0 0 4px rgba(255, 85, 85, 0.4)';
+        }
+      } else if (globalIndex === text.length) {
+        // Cursor
+        style.backgroundColor = '#1976D2'; // Azul más vibrante
+        style.color = '#FFFFFF';
+        style.borderRadius = '2px';
+        style.boxShadow = '0 0 8px rgba(25, 118, 210, 0.6)';
+        style.padding = '0 2px';
+      }
+      
+      // Resaltado de sintaxis mejorado
+      const currentWord = line.slice(charIdx).split(/\s|:|\(|\)|=|\{|\}|,|\[|\]|;/)[0];
+      
+      // Palabras clave
+      const keywords = ['def', 'return', 'import', 'from', 'for', 'if', 'else', 'elif', 'while', 'class', 'and', 'or', 'not', 'in', 'is', 'protected', 'val', 'String', 'function', 'var', 'const', 'let', 'async', 'await', 'try', 'catch', 'finally', 'throw', 'new'];
+      const types = ['int', 'float', 'str', 'bool', 'list', 'dict', 'tuple', 'set', 'number', 'string', 'boolean', 'object', 'array'];
+      
+      // Resaltado mejorado con diferentes categorías
+      if (line.trim().startsWith('#') || line.trim().startsWith('//')) {
+        // Línea de comentario completa
+        style.color = '#6A9955'; // Verde para comentarios
+        style.fontStyle = 'italic';
+      } else if (char === '#' || (char === '/' && line[charIdx + 1] === '/')) {
+        // Inicio de comentario
+        style.color = '#6A9955'; // Verde para comentarios
+        style.fontStyle = 'italic';
+      } else if (keywords.includes(currentWord)) {
+        // Palabra clave
+        style.color = '#C586C0'; // Violeta para palabras clave
+        style.fontWeight = 'bold';
+      } else if (types.includes(currentWord)) {
+        // Tipos de datos
+        style.color = '#4EC9B0'; // Verde azulado para tipos
+      } else if (/^[A-Z][a-zA-Z0-9_]*$/.test(currentWord)) {
+        // Clases/tipos (comienzan con mayúscula)
+        style.color = '#4EC9B0'; // Verde azulado para clases
+      } else if (char === '(' || char === ')' || char === '[' || char === ']' || char === '{' || char === '}' || char === '=' || char === '+' || char === '-' || char === '*' || char === '/' || char === ':' || char === ',') {
+        // Operadores y símbolos
+        style.color = '#DCDCAA'; // Amarillo claro para operadores
+      } else if (char === '"' || char === "'") {
+        // Strings
+        style.color = '#CE9178'; // Naranja para strings
+      } else if (/^[0-9]+([.][0-9]+)?$/.test(currentWord)) {
+        // Números
+        style.color = '#B5CEA8'; // Verde claro para números
+      } else if (/^[a-zA-Z0-9_]+\(/.test(line.slice(charIdx))) {
+        // Llamadas a funciones
+        style.color = '#DCDCAA'; // Amarillo para funciones
+      }
+    }
+    
+    return style;
   };
 
   return (
@@ -115,70 +250,76 @@ export const TextDisplay: React.FC<TextDisplayProps> = ({
       ref={textContainerRef}
     >
       {codeMode && !isTextConcept ? (
-        // Vista de editor de código (solo para código real)
-        <div className="bg-[#1e1e1e] rounded-lg overflow-hidden shadow-xl border border-gray-700 text-left">
-          {/* Barra superior del editor */}
-          <div className="h-8 bg-[#2d2d2d] border-b border-gray-700 flex items-center px-3">
-            <div className="w-3 h-3 rounded-full bg-[#ff5f56] mr-1.5"></div>
-            <div className="w-3 h-3 rounded-full bg-[#ffbd2e] mr-1.5"></div>
-            <div className="w-3 h-3 rounded-full bg-[#27c93f]"></div>
-            <div className="ml-3 text-sm text-gray-400 font-mono">code-editor.py</div>
+        // Vista de editor de código mejorado (solo para código real)
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="bg-[#1e1e1e] rounded-xl overflow-hidden shadow-2xl border border-gray-700 text-left"
+          style={{ 
+            boxShadow: `0 10px 25px -5px rgba(0, 0, 0, 0.7), 
+                        0 0 15px rgba(0, 0, 0, 0.6), 
+                        0 0 1px ${themeColors.cursor}80 inset` 
+          }}
+          ref={codeEditorRef}
+        >
+          {/* Barra superior del editor mejorada */}
+          <div className="h-10 bg-gradient-to-r from-[#2d2d2d] to-[#252525] border-b border-gray-700 flex items-center px-3 justify-between">
+            <div className="flex items-center">
+              <div className="w-3 h-3 rounded-full bg-[#ff5f56] mr-1.5 hover:opacity-80 transition-opacity"></div>
+              <div className="w-3 h-3 rounded-full bg-[#ffbd2e] mr-1.5 hover:opacity-80 transition-opacity"></div>
+              <div className="w-3 h-3 rounded-full bg-[#27c93f] hover:opacity-80 transition-opacity"></div>
+              <div className="ml-3 text-sm text-gray-300 font-mono flex items-center">
+                <Code2 size={14} className="mr-1.5 text-blue-400" />
+                <span>código_editor.py</span>
+              </div>
+            </div>
+            <div className="flex items-center text-xs font-mono text-gray-500">
+              <Zap size={12} className="mr-1 text-yellow-500" />
+              <span>Línea {cursorLineRef.current + 1}</span>
+            </div>
           </div>
           
           {/* Contenedor con scrollbar único */}
-          <div className={`${getCodeContainerHeight()} overflow-auto ${!showRealTimeChart ? 'my-2' : ''}`}>
+          <div 
+            className={`${getCodeContainerHeight()} overflow-auto ${!showRealTimeChart ? 'my-2' : ''} code-editor-container`}
+            ref={scrollContainerRef}
+            style={{
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#4a4a4a #1e1e1e'
+            }}
+          >
             <div className="flex min-w-full">
-              {/* Números de línea */}
-              <div className="py-2 px-1 bg-[#1e1e1e] text-gray-500 font-mono text-right select-none w-12 border-r border-gray-700 flex-shrink-0">
-                {textLines.map((_, idx) => (
-                  <div key={`line-${idx}`} className={`px-1 text-base font-medium ${!showRealTimeChart ? 'leading-8' : 'leading-7'}`}>
-                    {idx + 1}
-                  </div>
-                ))}
+              {/* Números de línea mejorados */}
+              <div className="py-2 px-1 bg-[#1a1a1a] text-gray-500 font-mono text-right select-none w-12 border-r border-gray-700 flex-shrink-0">
+                {textLines.map((_, idx) => {
+                  // Destacar la línea actual donde está el cursor
+                  const isCurrentLine = cursorLineRef.current === idx;
+                  return (
+                    <div 
+                      key={`line-${idx}`} 
+                      className={`px-1 text-base font-medium transition-colors duration-200 ${!showRealTimeChart ? 'leading-8' : 'leading-7'} ${isCurrentLine ? 'text-blue-400 font-bold' : ''}`}
+                    >
+                      {idx + 1}
+                    </div>
+                  );
+                })}
               </div>
               
-              {/* Código con sintaxis */}
-              <div className="py-2 px-4 font-mono w-full">
+              {/* Código con sintaxis mejorada */}
+              <div className="py-2 px-4 font-mono w-full relative">
                 {(() => {
                   const lines = targetText.trim().split('\n');
                   let charIndex = 0;
                   
                   return lines.map((line, lineIdx) => {
+                    // Verificar si esta es la línea actual
+                    const isCurrentLine = cursorLineRef.current === lineIdx;
+                    
                     // Procesar cada línea
                     const lineChars = line.split('').map((char, charIdx) => {
                       const globalIndex = charIndex + charIdx;
-                      const style: React.CSSProperties = { color: '#d4d4d4' }; // Color por defecto
-                      
-                      // Estilizar cada carácter según el estado de escritura
-                      if (isHydrated) {
-                        if (globalIndex < text.length) {
-                          // Carácter ya escrito
-                          if (text[globalIndex] === char) {
-                            // Carácter correcto
-                            style.color = '#8BE98B'; // Verde más brillante
-                          } else {
-                            // Carácter incorrecto
-                            style.color = '#FF5555'; // Rojo más brillante
-                            style.textDecoration = 'underline';
-                            style.textDecorationColor = '#FF5555';
-                          }
-                        } else if (globalIndex === text.length) {
-                          // Cursor
-                          style.backgroundColor = '#1976D2'; // Azul más vibrante
-                          style.color = '#FFFFFF';
-                        }
-                        
-                        // Colorear sintaxis para código similar al ejemplo
-                        if (char === '#') {
-                          style.color = '#6A9955'; // Comentarios
-                        } else if (['def', 'return', 'import', 'from', 'for', 'if', 'else', 'elif', 'while', 'class', 'and', 'or', 'not', 'in', 'is', 'protected', 'val', 'String'].includes(line.slice(charIdx).split(/\s|:|\(|\)|=|\{|\}|,/)[0])) {
-                          style.color = '#C586C0'; // Palabras clave en violeta
-                        } else if (char === '(' || char === ')' || char === '[' || char === ']' || char === '{' || char === '}' || char === '=' || char === '+' || char === '-' || char === '*' || char === '/' || char === ':') {
-                          style.color = '#DCDCAA'; // Operadores y símbolos en amarillo claro
-                        } else if (char === '"' || char === "'") {
-                          style.color = '#CE9178'; // Strings
-                        }
-                      }
+                      const style = getSyntaxHighlightedStyle(line, char, charIdx, globalIndex);
                       
                       return (
                         <span key={`char-${lineIdx}-${charIdx}`} style={style}>
@@ -191,23 +332,38 @@ export const TextDisplay: React.FC<TextDisplayProps> = ({
                     charIndex += line.length + 1; // +1 por el salto de línea
                     
                     return (
-                      <div key={`line-content-${lineIdx}`} className={`whitespace-pre text-base ${!showRealTimeChart ? 'leading-8' : 'leading-7'}`}>
+                      <div 
+                        key={`line-content-${lineIdx}`} 
+                        className={`whitespace-pre text-base transition-colors duration-200 ${!showRealTimeChart ? 'leading-8' : 'leading-7'} ${isCurrentLine ? 'bg-[#282828] -mx-4 px-4 rounded' : ''}`}
+                      >
                         {lineChars}
                       </div>
                     );
                   });
                 })()}
+                
+                {/* Indicador de posición */}
+                <div 
+                  className="absolute right-4 h-full top-0 w-0.5 bg-gradient-to-b from-transparent via-gray-600 to-transparent opacity-30"
+                  style={{ opacity: 0.2 }}
+                ></div>
               </div>
             </div>
           </div>
           
           {/* Barra inferior con información */}
-          <div className="text-sm text-gray-500 py-1 px-3 border-t border-gray-800 bg-[#1e1e1e]">
-            <span className="font-mono">
-              {text.length} / {targetText.length} caracteres
+          <div className="text-sm text-gray-400 py-2 px-4 border-t border-gray-700 bg-gradient-to-r from-[#1e1e1e] to-[#252525] flex justify-between items-center">
+            <span className="font-mono flex items-center">
+              <Terminal size={12} className="mr-1.5 text-gray-500" />
+              <span>
+                {text.length} / {targetText.length} caracteres
+              </span>
+            </span>
+            <span className="text-xs text-gray-500 opacity-70">
+              {Math.round((text.length / targetText.length) * 100)}% completado
             </span>
           </div>
-        </div>
+        </motion.div>
       ) : (
         // Vista de texto normal (para texto normal y conceptos)
         <div className={`flex items-center justify-center h-full p-4 rounded-xl`}>
@@ -376,6 +532,38 @@ export const TextDisplay: React.FC<TextDisplayProps> = ({
           </div>
         </div>
       )}
+      
+      {/* Estilos globales para el editor de código */}
+      <style jsx global>{`
+        .code-editor-container::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        
+        .code-editor-container::-webkit-scrollbar-track {
+          background: #1a1a1a;
+          border-radius: 4px;
+        }
+        
+        .code-editor-container::-webkit-scrollbar-thumb {
+          background: #4a4a4a;
+          border-radius: 4px;
+          border: 2px solid #1a1a1a;
+        }
+        
+        .code-editor-container::-webkit-scrollbar-thumb:hover {
+          background: #555;
+        }
+        
+        .text-update-flash {
+          animation: flash-update 0.3s ease-out;
+        }
+        
+        @keyframes flash-update {
+          0% { background-color: rgba(25, 118, 210, 0.2); }
+          100% { background-color: transparent; }
+        }
+      `}</style>
     </div>
   );
 }; 

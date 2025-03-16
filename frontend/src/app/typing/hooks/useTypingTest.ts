@@ -88,6 +88,10 @@ export function useTypingTest() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const textContainerRef = useRef<HTMLDivElement>(null);
 
+  // Refs para evitar dependencias circulares
+  const pauseTestRef = useRef<(() => void) | undefined>(undefined);
+  const resumeTestRef = useRef<(() => void) | undefined>(undefined);
+
   // Efecto para actualizar el tiempo de tipeo y detectar fin del modo
   useEffect(() => {
     if (selectedTime !== null) {
@@ -137,15 +141,15 @@ export function useTypingTest() {
   // Efecto para manejar eventos de teclado
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Si la prueba está pausada, reanudarla con cualquier tecla
-      if (isPaused && isActive && !endTime) {
+      // Si la prueba está pausada, reanudarla con cualquier tecla (solo si no estamos en modo código)
+      if (isPaused && isActive && !endTime && !codeMode) {
         // Ignorar teclas como Escape, Alt, Ctrl, etc.
         if (e.key === 'Escape' || e.altKey || e.ctrlKey || e.metaKey) {
           return;
         }
         
-        // Reanudar la prueba
-        resumeTest();
+        // Reanudar la prueba usando la referencia
+        if (resumeTestRef.current) resumeTestRef.current();
         return;
       }
       
@@ -236,8 +240,8 @@ export function useTypingTest() {
       const newTimer = setTimeout(() => {
         const now = Date.now();
         const lastType = lastTypingTime || 0;
-        // Solo pausar si el tiempo de inactividad excede el umbral
-        if (isActive && !endTime && (now - lastType >= INACTIVITY_THRESHOLD)) {
+        // Solo pausar si el tiempo de inactividad excede el umbral Y no estamos en modo código
+        if (isActive && !endTime && (now - lastType >= INACTIVITY_THRESHOLD) && !codeMode) {
           pauseTest();
         }
       }, INACTIVITY_THRESHOLD);
@@ -414,8 +418,12 @@ export function useTypingTest() {
         updateHistory(currentTime, null, currentWpm, currentAcc);
       }
       
-      // Usar un intervalo muy corto para actualización ultra fluida
+      // Usar un intervalo ajustado para actualización más precisa
       let lastUpdate = Date.now();
+      let lastPosition = currentPosition;
+      let lastAccuracy = calculateAccuracy(text, targetText);
+      let consecutiveStableUpdates = 0; // Contador de actualizaciones sin cambio significativo
+      
       interval = setInterval(() => {
         const now = Date.now();
         const deltaMs = now - lastUpdate;
@@ -428,18 +436,41 @@ export function useTypingTest() {
         if (currentPosition > 0) {
           const currentWpm = calculateCurrentWPM();
           const currentAcc = calculateAccuracy(text, targetText);
+          const positionDelta = Math.abs(currentPosition - lastPosition);
+          const accuracyDelta = Math.abs(currentAcc - lastAccuracy);
           
-          // Optimizar actualizaciones - solo actualizar en estos casos:
-          // 1. Ha pasado al menos 50ms desde la última actualización
-          // 2. El usuario ha escrito más caracteres (delta importante)
-          // 3. Es un momento clave (cada 5 caracteres)
-          if (
-            deltaMs >= 50 || 
-            currentPosition % 5 === 0 ||
-            currentPosition === targetText.length // Punto final
-          ) {
+          // Condiciones de actualización:
+          // 1. Ha pasado al menos 100ms desde la última actualización
+          // 2. El usuario ha escrito más caracteres (cambio importante)
+          // 3. La precisión ha cambiado significativamente
+          // 4. Es un momento clave (cada 3 caracteres)
+          // 5. Punto final
+          const shouldUpdate = 
+            deltaMs >= 100 || 
+            positionDelta >= 2 ||
+            accuracyDelta >= 2 ||
+            currentPosition % 3 === 0 ||
+            currentPosition === targetText.length;
+          
+          // Si no hay cambios importantes, aumentar contador de estabilidad
+          if (!shouldUpdate && positionDelta === 0) {
+            consecutiveStableUpdates++;
+            
+            // Si varias actualizaciones consecutivas sin cambios (posible micro-pausa)
+            // forzar una actualización cada 5 intervalos estables para reflejar la inactividad
+            if (consecutiveStableUpdates >= 5) {
+              updateHistory(currentTime, null, currentWpm, currentAcc);
+              lastUpdate = now;
+              lastPosition = currentPosition;
+              lastAccuracy = currentAcc;
+              consecutiveStableUpdates = 0;
+            }
+          } else if (shouldUpdate) {
             updateHistory(currentTime, null, currentWpm, currentAcc);
-            lastUpdate = now; // Actualizar el tiempo de la última actualización
+            lastUpdate = now;
+            lastPosition = currentPosition;
+            lastAccuracy = currentAcc;
+            consecutiveStableUpdates = 0;
           }
         }
       }, 50); // Intervalo ultra corto para capturar cambios rápidamente
@@ -563,6 +594,23 @@ export function useTypingTest() {
       if (newText.length === 1 && startTime === null) {
         setIsActive(true);
       }
+      
+      // Calcular tiempo entre pulsaciones para detectar micro-pausas
+      const currentTimestamp = Date.now();
+      if (isActive && !isPaused && lastTypingTime) {
+        const timeDiff = currentTimestamp - lastTypingTime;
+        
+        // Si la pausa es significativa (>500ms) pero no suficiente para pausar automáticamente
+        // registrarla como micro-pausa para cálculos más precisos
+        if (timeDiff > 500 && timeDiff < INACTIVITY_THRESHOLD) {
+          console.log(`Micro-pausa detectada: ${timeDiff}ms`);
+          // Añadir un pequeño incremento al tiempo pausado para micro-pausas
+          setTotalPausedTime(prev => prev + Math.min(300, timeDiff / 2));
+        }
+      }
+      
+      // Actualizar el tiempo de la última pulsación
+      setLastTypingTime(currentTimestamp);
       
       // Rastrear cambios para contar correctamente todas las pulsaciones
       trackTextChanges(newText, targetText);
@@ -877,30 +925,10 @@ export function useTypingTest() {
     }, 50);
   };
 
-  // Efecto para manejar cambios en el modo código
-  useEffect(() => {
-    // No hacer nada en la primera renderización o si estamos en proceso de cambio
-    if (codeMode === getDefaultCodeMode() || isChangingMode) return;
-    
-    // Si no estamos en una prueba activa, actualizar el texto objetivo
-    if (!isActive) {
-      console.log(`Efecto detectó cambio de modo a: ${codeMode ? 'código' : 'normal'}`);
-      
-      // Generar nuevas líneas con el modo actualizado
-      const newTargetText = generateLines(selectedTime, codeMode);
-      
-      // Forzar la actualización del texto objetivo
-      if (newTargetText !== targetText) {
-        console.log('Actualizando texto objetivo en efecto de cambio de modo');
-        setTargetText(newTargetText);
-      }
-    }
-  }, [codeMode, isActive, selectedTime, generateLines, targetText]);
-
   // Función para pausar la prueba
-  const pauseTest = () => {
-    if (isActive && !endTime && !isPaused) {
-      console.log('Pausando prueba por inactividad');
+  const pauseTest = useCallback(() => {
+    if (isActive && !endTime && !isPaused && !codeMode) {
+      console.log('Pausando prueba por inactividad - desactivado en modo código');
       setIsPaused(true);
       setPauseStartTime(Date.now());
       
@@ -910,10 +938,13 @@ export function useTypingTest() {
         setInactivityTimer(null);
       }
     }
-  };
+  }, [isActive, endTime, isPaused, codeMode, inactivityTimer, setIsPaused, setPauseStartTime, setInactivityTimer]);
+
+  // Actualizar la referencia
+  pauseTestRef.current = pauseTest;
   
   // Función para reanudar la prueba
-  const resumeTest = () => {
+  const resumeTest = useCallback(() => {
     if (isActive && !endTime && isPaused && pauseStartTime) {
       const currentTime = Date.now();
       const pauseDuration = currentTime - pauseStartTime;
@@ -928,16 +959,64 @@ export function useTypingTest() {
       setPauseStartTime(null);
       setLastTypingTime(currentTime);
       
-      // Configurar un nuevo temporizador para detectar inactividad
-      const newTimer = setTimeout(() => {
-        if (isActive && !endTime) {
-          pauseTest();
-        }
-      }, INACTIVITY_THRESHOLD);
-      
-      setInactivityTimer(newTimer);
+      // Solo configurar temporizador de inactividad si no estamos en modo código
+      if (!codeMode) {
+        // Configurar un nuevo temporizador para detectar inactividad
+        const newTimer = setTimeout(() => {
+          const now = Date.now();
+          const lastType = lastTypingTime || 0;
+          if (isActive && !endTime && (now - lastType >= INACTIVITY_THRESHOLD) && !codeMode) {
+            // Usar la referencia en lugar de la función directamente
+            if (pauseTestRef.current) pauseTestRef.current();
+          }
+        }, INACTIVITY_THRESHOLD);
+        
+        setInactivityTimer(newTimer);
+      }
     }
-  };
+  }, [
+    isActive, 
+    endTime, 
+    isPaused, 
+    pauseStartTime, 
+    codeMode, 
+    lastTypingTime, 
+    INACTIVITY_THRESHOLD,
+    setTotalPausedTime,
+    setIsPaused, 
+    setPauseStartTime, 
+    setLastTypingTime,
+    setInactivityTimer,
+  ]);
+
+  // Actualizar la referencia
+  resumeTestRef.current = resumeTest;
+
+  // Efecto para manejar cambios en el modo código
+  useEffect(() => {
+    // No hacer nada en la primera renderización o si estamos en proceso de cambio
+    if (codeMode === getDefaultCodeMode() || isChangingMode) return;
+    
+    // Si estamos en modo código y la prueba está pausada, reanudarla automáticamente
+    if (codeMode && isPaused) {
+      console.log('Reanudando prueba automáticamente al cambiar a modo código');
+      if (resumeTestRef.current) resumeTestRef.current();
+    }
+    
+    // Si no estamos en una prueba activa, actualizar el texto objetivo
+    if (!isActive) {
+      console.log(`Efecto detectó cambio de modo a: ${codeMode ? 'código' : 'normal'}`);
+      
+      // Generar nuevas líneas con el modo actualizado
+      const newTargetText = generateLines(selectedTime, codeMode);
+      
+      // Forzar la actualización del texto objetivo
+      if (newTargetText !== targetText) {
+        console.log('Actualizando texto objetivo en efecto de cambio de modo');
+        setTargetText(newTargetText);
+      }
+    }
+  }, [codeMode, isActive, selectedTime, generateLines, targetText, isPaused]);
 
   return {
     text,

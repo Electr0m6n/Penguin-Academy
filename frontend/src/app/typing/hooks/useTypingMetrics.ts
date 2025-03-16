@@ -60,8 +60,8 @@ export function useTypingMetrics() {
     const currentTime = endTime || Date.now();
     
     // Tiempo transcurrido en minutos (con precisión), restando el tiempo pausado
-    // Aseguramos un mínimo de 3 segundos (0.05 minutos) para evitar valores inflados al inicio
-    const timeElapsedMin = Math.max(0.05, (currentTime - startTime - totalPausedTime) / 1000 / 60);
+    // Aumentamos el tiempo mínimo a 0.1 minutos (6 segundos) para evitar valores inflados al inicio
+    const timeElapsedMin = Math.max(0.1, (currentTime - startTime - totalPausedTime) / 1000 / 60);
     
     // Para textos terminados, usar la longitud del texto para determinar chars correctos
     let correctCharsTyped = 0;
@@ -85,25 +85,38 @@ export function useTypingMetrics() {
     // Aplicar factores de ajuste solo si no es un test finalizado
     // Para tests finalizados, queremos mostrar el valor real sin ajustes
     if (!endTime) {
-      // Factor de corrección que considera el esfuerzo total (incluyendo correcciones)
+      // Factor de corrección más estricto que considera el esfuerzo total (incluyendo correcciones)
+      // Un factor más estricto (0.85 en lugar de 0.7) hace que las correcciones penalicen más el WPM
       const correctionFactor = Math.min(1.0, correctCharsTyped / Math.max(1, totalKeypresses));
       
-      // Aplicar el factor de corrección a la velocidad bruta, pero de forma más suave
-      wpm = wpm * Math.pow(correctionFactor, 0.7);
+      // Aplicar el factor de corrección a la velocidad bruta
+      wpm = wpm * Math.pow(correctionFactor, 0.85);
       
       // Ajuste por precisión
       const accuracy = calculateAccuracy(text, targetText) / 100; // entre 0 y 1
       
-      // Aplicar un ajuste de precisión más estricto solo para valores en tiempo real
+      // Aplicar un ajuste de precisión más estricto
       let accuracyFactor;
-      if (accuracy >= 0.9) {
-        accuracyFactor = Math.pow(accuracy, 0.8); // Más suave
+      if (accuracy >= 0.97) {
+        accuracyFactor = 1.0; // Sin penalización para precisión casi perfecta
+      } else if (accuracy >= 0.9) {
+        accuracyFactor = Math.pow(accuracy, 0.9); // Penalización más suave
       } else {
-        accuracyFactor = Math.pow(accuracy, 1.2); // Menos penalización
+        accuracyFactor = Math.pow(accuracy, 1.3); // Mayor penalización para precisión baja
       }
       
       // Aplicar factor de precisión al WPM
       wpm = wpm * accuracyFactor;
+      
+      // Factor adicional para contrarrestar WPM optimista
+      // Aplicamos un factor de reducción global para acercar el resultado a un valor más realista
+      const realismFactor = 0.92; // Reducir un 8% para compensar valores optimistas
+      wpm = wpm * realismFactor;
+    } else {
+      // Para valores finales, también aplicamos un pequeño factor de realismo
+      // pero más sutil para no alterar demasiado el resultado final
+      const finalRealismFactor = 0.95; // Reducir un 5% para valores finales
+      wpm = wpm * finalRealismFactor;
     }
     
     // Si es un cálculo final, asegurar que sea al menos 1
