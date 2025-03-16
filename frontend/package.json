@@ -1,5 +1,5 @@
 {
-  "name": "pagina",
+  "name": "repoo",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -25,6 +25,7 @@
     "three": "^0.172.0"
   },
   "devDependencies": {
+    "next" : "15.1.6",
     "@eslint/eslintrc": "^3",
     "@types/node": "^20",
     "@types/react": "^19",
