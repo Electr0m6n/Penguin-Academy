@@ -47,7 +47,6 @@ interface ResultsChartProps {
   incorrectChars: number;
   showAccTooltip: boolean;
   setShowAccTooltip: (show: boolean) => void;
-  handleReset: () => void;
 }
 
 export const ResultsChart: React.FC<ResultsChartProps> = ({
@@ -62,8 +61,7 @@ export const ResultsChart: React.FC<ResultsChartProps> = ({
   correctChars,
   incorrectChars,
   showAccTooltip,
-  setShowAccTooltip,
-  handleReset
+  setShowAccTooltip
 }) => {
   const { getChartData, chartOptions } = useChartConfig({
     wpmHistory,
@@ -255,7 +253,24 @@ export const ResultsChart: React.FC<ResultsChartProps> = ({
     }
   }, [wpmHistory.length, activePoint]);
 
-  if (!endTime) return null;
+  // Solo mostrar si tenemos datos de una prueba completada
+  if (!endTime || wpmHistory.length === 0) {
+    console.log('ResultsChart no se muestra: no hay datos completos', { 
+      endTime: !!endTime, 
+      endTimeValue: endTime,
+      wpmHistoryLength: wpmHistory.length,
+      wpmHistoryData: wpmHistory.slice(0, 3) // Mostrar los primeros 3 elementos para depuración
+    });
+    return null;
+  }
+
+  // Si llegamos aquí, tenemos datos para mostrar
+  console.log('ResultsChart se va a mostrar', { 
+    endTime: !!endTime, 
+    wpmHistoryLength: wpmHistory.length,
+    finalWPM: finalWpm,
+    finalAccuracy: finalAccuracy
+  });
 
   return (
     <motion.div 
@@ -488,10 +503,10 @@ export const ResultsChart: React.FC<ResultsChartProps> = ({
                       backgroundColor: safeStyles.color
                     }}
                   ></div>
-          </div>
-        </div>
-      </div>
-      
+                </div>
+              </div>
+            </div>
+            
             {/* Tipo de prueba */}
             <div className="bg-black/20 rounded-lg p-2 sm:p-3 border"
                  style={{ borderColor: `${safeStyles.color}20` }}>
@@ -513,10 +528,10 @@ export const ResultsChart: React.FC<ResultsChartProps> = ({
                 <div className="flex justify-between">
                   <span>Idioma:</span> 
                   <span className="font-bold">español</span>
-          </div>
-        </div>
-      </div>
-      
+                </div>
+              </div>
+            </div>
+            
             {/* Caracteres */}
             <div className="bg-black/20 rounded-lg p-2 sm:p-3 border"
                  style={{ borderColor: `${safeStyles.color}20` }}>
@@ -533,23 +548,8 @@ export const ResultsChart: React.FC<ResultsChartProps> = ({
                   <span className="font-bold">{correctChars}</span>
                 </div>
               </div>
+            </div>
           </div>
-        </div>
-      </div>
-      
-      {/* Botones */}
-        <div className="flex justify-center mt-4 md:mt-6">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.98 }}
-          onClick={handleReset}
-            className="px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-base text-white rounded-md font-medium transition-all duration-300 bg-black/40 border border-white/20 hover:bg-black/60 font-mono"
-            style={{ 
-              boxShadow: `0 0 15px ${safeStyles.color}20` 
-            }}
-        >
-            Nueva prueba
-          </motion.button>
         </div>
       </div>
     </motion.div>

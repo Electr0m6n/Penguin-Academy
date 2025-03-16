@@ -51,16 +51,17 @@ export function useTypingMetrics() {
     targetText: string,
     currentPosition: number,
     startTime: number | null,
-    endTime: number | null
+    endTime: number | null,
+    totalPausedTime: number = 0
   ): number => {
     if (!startTime) return 0;
     
     // Usar endTime si el test ha terminado, de lo contrario usar el tiempo actual
     const currentTime = endTime || Date.now();
     
-    // Tiempo transcurrido en minutos (con precisión)
+    // Tiempo transcurrido en minutos (con precisión), restando el tiempo pausado
     // Aseguramos un mínimo de 3 segundos (0.05 minutos) para evitar valores inflados al inicio
-    const timeElapsedMin = Math.max(0.05, (currentTime - startTime) / 1000 / 60);
+    const timeElapsedMin = Math.max(0.05, (currentTime - startTime - totalPausedTime) / 1000 / 60);
     
     // Para textos terminados, usar la longitud del texto para determinar chars correctos
     let correctCharsTyped = 0;
@@ -241,6 +242,14 @@ export function useTypingMetrics() {
     finalWpm: number,
     finalAccuracy: number
   ) => {
+    console.log('Llamada a updateHistory:', {
+      currentTime,
+      finalTime,
+      finalWpm,
+      finalAccuracy,
+      testCompleted
+    });
+    
     // No actualizar si el test ya ha sido completado y no es la actualización final
     if (testCompleted && !finalTime) {
       console.log('Actualización ignorada: test ya completado y no es actualización final');
@@ -265,6 +274,15 @@ export function useTypingMetrics() {
       
       // Limpiar cualquier valor incorrecto que pudiera haber sido añadido antes
       setWpmHistory(prev => {
+        // Si no hay historial previo, crear uno con solo el punto final
+        if (prev.length === 0) {
+          console.log('No hay historial previo, creando punto inicial y final');
+          return [
+            { time: 0, wpm: 0 },
+            { time: finalTime, wpm: finalWpmValue }
+          ];
+        }
+        
         // Filtrar cualquier punto que esté después del tiempo final
         const filteredHistory = prev.filter(p => p.time <= finalTime);
         

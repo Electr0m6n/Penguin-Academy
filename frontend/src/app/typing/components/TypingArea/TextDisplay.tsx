@@ -34,6 +34,30 @@ export const TextDisplay: React.FC<TextDisplayProps> = ({
   codeMode = false, // Valor por defecto
   showRealTimeChart = false // Valor por defecto
 }) => {
+  // Almacenar la versión anterior del texto objetivo para detectar cambios
+  const prevTargetTextRef = React.useRef(targetText);
+  
+  // Efecto para detectar y responder a cambios en el texto objetivo
+  React.useEffect(() => {
+    // Verificar si ha habido un cambio en el texto objetivo
+    if (prevTargetTextRef.current !== targetText) {
+      console.log(`TextDisplay: Texto objetivo actualizado debido a cambio de modo: ${codeMode ? 'código' : 'normal'}`);
+      
+      // Si tenemos acceso al DOM, podemos hacer un "flash" para indicar el cambio
+      if (textContainerRef && textContainerRef.current) {
+        const container = textContainerRef.current;
+        // Aplicar una animación de flash para indicar que el texto ha cambiado
+        container.classList.add('text-update-flash');
+        setTimeout(() => {
+          container.classList.remove('text-update-flash');
+        }, 300);
+      }
+      
+      // Actualizar la referencia con el nuevo valor
+      prevTargetTextRef.current = targetText;
+    }
+  }, [targetText, codeMode, textContainerRef]);
+  
   // Memorizar el resultado para evitar recálculos innecesarios
   const isTextConcept = React.useMemo(
     () => {

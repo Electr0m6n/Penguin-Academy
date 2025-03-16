@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Trophy, X, Award, CheckCircle2, Star } from 'lucide-react'
+import { Trophy, X, Award, CheckCircle2, Star, Twitter, Instagram, Github, Pause, PlayCircle, Clock } from 'lucide-react'
 
 // Añadir estilos personalizados para animaciones
 const customStyles = `
@@ -51,6 +51,23 @@ const customStyles = `
     );
     background-size: 200% 100%;
     animation: shimmer 3s linear infinite;
+  }
+
+  /* Animación de flash para cambio de texto */
+  @keyframes text-update-flash {
+    0% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+  
+  .text-update-flash {
+    animation: text-update-flash 0.3s ease-in-out;
   }
 
   /* Estilo del fondo con variables para los colores */
@@ -459,6 +476,8 @@ export default function TypingPage() {
     setShowAccTooltip,
     textContainerRef,
     inputRef,
+    isPaused,
+    resumeTest,
     handleTimeChange,
     handleInput,
     handleFocus,
@@ -468,7 +487,8 @@ export default function TypingPage() {
     handleSubmitScore,
     codeMode,
     setCodeMode,
-    error
+    error,
+    totalPausedTime
   } = useTypingTest();
   
   // Hook de Supabase
@@ -582,6 +602,57 @@ export default function TypingPage() {
     }
   }, [wpmHistory, isActive, showRealTimeChart]);
 
+  // Efecto para monitorear los cambios en endTime y asegurar que los resultados se muestren correctamente
+  useEffect(() => {
+    if (endTime) {
+      console.log('La prueba ha finalizado, endTime establecido:', {
+        startTime,
+        endTime,
+        wpmHistoryLength: wpmHistory.length,
+        accuracyHistoryLength: accuracyHistory.length
+      });
+    }
+  }, [endTime, startTime, wpmHistory.length, accuracyHistory.length]);
+  
+  // Función para manejar el reset y asegurar que todos los componentes se actualicen
+  const handleResetCompletely = useCallback(() => {
+    console.log('Ejecutando reset completo desde el componente principal');
+    
+    // Limpiar estados visuales primero
+    if (showTopScoreAlert) {
+      setShowTopScoreAlert(false);
+    }
+    
+    // Cerrar otros componentes si están abiertos
+    if (showThemeSelector) {
+      setShowThemeSelector(false);
+    }
+    
+    if (showLeaderboard) {
+      toggleLeaderboard();
+    }
+    
+    if (showUserProfile) {
+      setShowUserProfile(false);
+    }
+    
+    // Llamar al reset normal con un pequeño retraso para permitir que los componentes se cierren primero
+    setTimeout(() => {
+      console.log('Llamando a handleReset después de limpiar componentes');
+      handleReset();
+    }, 50);
+  }, [
+    handleReset, 
+    showTopScoreAlert, 
+    showThemeSelector, 
+    showLeaderboard, 
+    showUserProfile, 
+    setShowTopScoreAlert, 
+    setShowThemeSelector, 
+    toggleLeaderboard, 
+    setShowUserProfile
+  ]);
+  
   // Efecto para forzar la actualización del texto cuando cambia el modo código
   useEffect(() => {
     // Solo registramos el cambio sin forzar renderizaciones
@@ -616,8 +687,15 @@ export default function TypingPage() {
     // Actualizar el modo - esto usará nuestra versión protegida en useTypingTest
     setCodeMode(newMode);
     
+    // Forzar un focus en el input para que el usuario pueda seguir escribiendo inmediatamente
+    setTimeout(() => {
+      if (inputRef && inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 100);
+    
     // El reset se hará después automáticamente debido a los efectos en useTypingTest
-  }, [codeMode, setCodeMode]);
+  }, [codeMode, setCodeMode, inputRef]);
 
   // Efecto para mostrar la notificación cuando se entra en el Top 25
   useEffect(() => {
@@ -693,6 +771,30 @@ export default function TypingPage() {
     setShowTopScoreAlert(false);
   };
 
+  // Efecto para monitorear los cambios en endTime
+  useEffect(() => {
+    if (endTime) {
+      console.log('Test finalizado con endTime:', endTime);
+    }
+  }, [endTime]);
+
+  // Nuevo efecto de depuración para monitorear las variables críticas
+  useEffect(() => {
+    console.log('Estado actual de variables críticas para ResultsChart:', { 
+      endTime, 
+      wpmHistoryLength: wpmHistory.length,
+      startTime,
+      accuracy,
+      correctChars,
+      incorrectChars,
+      isActive,
+      textLength: targetText.length,
+      textTypedLength: text.length,
+      isTextComplete: text.length >= targetText.length,
+      hasCompletedTest: text.length >= targetText.length && startTime !== null
+    });
+  }, [endTime, wpmHistory, startTime, accuracy, correctChars, incorrectChars, isActive, text.length, targetText.length]);
+
   return (
     <div 
       className="relative isolate flex items-center justify-center min-h-screen w-full overflow-hidden"
@@ -725,7 +827,7 @@ export default function TypingPage() {
         currentUser={currentUser}
         handleProfileClick={handleProfileClick}
         handleLeaderboardToggle={handleLeaderboardToggle}
-        handleReset={handleReset}
+        handleReset={handleResetCompletely}
       />
       
       {/* Selector de tiempo */}
@@ -786,25 +888,36 @@ export default function TypingPage() {
               calculateCurrentWPM={calculateCurrentWPM}
               calculateAccuracy={calculateAccuracy}
               codeMode={codeMode}
+              isPaused={isPaused}
+              totalPausedTime={totalPausedTime}
             />
           )}
           
           {/* Resultados del test */}
-          <ResultsChart 
-            wpmHistory={wpmHistory}
-            accuracyHistory={accuracyHistory}
-            safeStyles={safeStyles}
-            isHydrated={isHydrated}
-            endTime={endTime}
-            startTime={startTime}
-            selectedTime={selectedTime}
-            calculateCurrentWPM={calculateCurrentWPM}
-            correctChars={correctChars}
-            incorrectChars={incorrectChars}
-            showAccTooltip={showAccTooltip}
-            setShowAccTooltip={setShowAccTooltip}
-            handleReset={handleReset}
-          />
+          {endTime && wpmHistory.length > 0 && (
+            <ResultsChart 
+              wpmHistory={wpmHistory}
+              accuracyHistory={accuracyHistory}
+              safeStyles={safeStyles}
+              isHydrated={isHydrated}
+              endTime={endTime}
+              startTime={startTime}
+              selectedTime={selectedTime}
+              calculateCurrentWPM={calculateCurrentWPM}
+              correctChars={correctChars}
+              incorrectChars={incorrectChars}
+              showAccTooltip={showAccTooltip}
+              setShowAccTooltip={setShowAccTooltip}
+            />
+          )}
+          
+          {/* Mensaje de depuración para ResultsChart */}
+          {!isActive && endTime && wpmHistory.length === 0 && (
+            <div className="mt-8 p-4 bg-red-500/20 rounded-md text-white">
+              <p className="text-sm font-mono">Error: No hay datos en wpmHistory para mostrar el gráfico de resultados.</p>
+              <p className="text-xs mt-2">endTime: {endTime}, wpmHistory.length: {wpmHistory.length}</p>
+            </div>
+          )}
           
           {/* Instrucciones (solo visibles al inicio) */}
           {!startTime && !isActive && (
@@ -815,6 +928,118 @@ export default function TypingPage() {
         </motion.div>
       </div>
         
+        {/* Mensaje de pausa */}
+        <AnimatePresence>
+          {isPaused && isActive && !endTime && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+              className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-md"
+              style={{ backgroundColor: 'rgba(0, 0, 0, 0.75)' }}
+            >
+              <motion.div 
+                className="relative p-10 rounded-2xl max-w-md overflow-hidden border-2"
+                style={{ 
+                  backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                  boxShadow: `0 0 40px ${safeStyles.color}40, inset 0 0 30px rgba(0, 0, 0, 0.5)`,
+                  borderColor: `${safeStyles.color}50`
+                }}
+                initial={{ y: 30 }}
+                animate={{ y: 0 }}
+                whileHover={{ scale: 1.02 }}
+              >
+                {/* Efectos de fondo */}
+                <div className="absolute inset-0 opacity-10" style={{ 
+                  backgroundSize: '12px 12px',
+                  backgroundImage: `radial-gradient(${safeStyles.color}20 1px, transparent 1px)`,
+                  zIndex: 0
+                }}></div>
+                
+                {/* Efecto de resplandor superior */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-36 h-12 bg-gradient-to-b opacity-30 blur-2xl"
+                     style={{ backgroundColor: safeStyles.color }}></div>
+                
+                {/* Efecto de líneas horizontales */}
+                <motion.div 
+                  className="absolute inset-0 overflow-hidden"
+                  style={{ zIndex: 0 }}
+                >
+                  {[...Array(5)].map((_, i) => (
+                    <motion.div 
+                      key={i}
+                      className="absolute h-[1px] w-full"
+                      style={{ 
+                        backgroundColor: `${safeStyles.color}40`,
+                        top: `${20 + i * 20}%` 
+                      }}
+                      animate={{ 
+                        left: ['-100%', '200%'],
+                        opacity: [0.2, 0.5, 0.2],
+                      }}
+                      transition={{ 
+                        duration: 6 + i, 
+                        repeat: Infinity, 
+                        delay: i * 0.7,
+                        ease: "linear" 
+                      }}
+                    />
+                  ))}
+                </motion.div>
+                
+                <div className="text-center relative z-10">
+                  <motion.div 
+                    className="inline-flex items-center justify-center mb-6 rounded-full p-5 border-2"
+                    style={{ borderColor: `${safeStyles.color}50` }}
+                    animate={{ 
+                      boxShadow: [
+                        `0 0 10px ${safeStyles.color}30`, 
+                        `0 0 20px ${safeStyles.color}50`, 
+                        `0 0 10px ${safeStyles.color}30`
+                      ]
+                    }}
+                    transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                  >
+                    <Pause size={50} style={{ color: safeStyles.color }} className="opacity-90" />
+                  </motion.div>
+                  
+                  <h2 className="text-3xl font-bold mb-3" style={{ color: safeStyles.color }}>
+                    Prueba en pausa
+                  </h2>
+                  
+                  <p className="text-base opacity-80 mb-8 max-w-xs mx-auto">
+                    El cronómetro está pausado por inactividad. Presiona cualquier tecla para continuar tu prueba.
+                  </p>
+                  
+                  <div className="flex items-center justify-center space-x-2 mb-5 px-4 py-2 rounded-lg bg-black/40 mx-auto w-max border" style={{ borderColor: `${safeStyles.color}30` }}>
+                    <Clock size={18} style={{ color: safeStyles.color }} className="opacity-80" />
+                    <span className="text-sm font-medium" style={{ color: safeStyles.color }}>Cronómetro detenido</span>
+                  </div>
+                  
+                  <motion.button
+                    className="mt-5 flex items-center justify-center mx-auto px-8 py-4 rounded-xl bg-gradient-to-b border-2 transition-all"
+                    style={{ 
+                      borderColor: `${safeStyles.color}50`,
+                      background: `linear-gradient(to bottom, ${safeStyles.color}15, ${safeStyles.color}05)`,
+                    }}
+                    onClick={() => resumeTest()}
+                    whileHover={{ 
+                      scale: 1.05, 
+                      boxShadow: `0 0 20px ${safeStyles.color}40`,
+                      borderColor: `${safeStyles.color}70`,
+                    }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <PlayCircle size={22} className="mr-3" style={{ color: safeStyles.color }} />
+                    <span className="font-medium text-lg" style={{ color: safeStyles.color }}>Continuar</span>
+                  </motion.button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Notificación de Top 25 */}
         <AnimatePresence>
           {showTopScoreAlert && (
@@ -923,6 +1148,85 @@ export default function TypingPage() {
                   </div>
                 </div>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Íconos de redes sociales */}
+        <AnimatePresence>
+          {(!isActive || endTime) && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.3 }}
+              className="fixed bottom-5 left-5 z-20 flex space-x-6"
+            >
+              {/* X/Twitter */}
+              <motion.div className="relative group">
+                <motion.a 
+                  href="https://twitter.com/luiscortespn" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ scale: 1.1, y: -3 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex items-center justify-center transition-all duration-300"
+                >
+                  <Twitter size={20} style={{ color: safeStyles.color }} className="opacity-70 group-hover:opacity-100" />
+                </motion.a>
+                {/* Tooltip */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black/60 backdrop-blur-md rounded text-xs font-mono whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 border"
+                     style={{ color: safeStyles.color, borderColor: `${safeStyles.color}40`, boxShadow: `0 0 10px ${safeStyles.color}20` }}>
+                  Twitter/X
+                  {/* Flecha del tooltip */}
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-black/60 border-r border-b"
+                       style={{ borderColor: `${safeStyles.color}40` }}></div>
+                </div>
+              </motion.div>
+
+              {/* Instagram */}
+              <motion.div className="relative group">
+                <motion.a 
+                  href="https://instagram.com/luiscortespenguin" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ scale: 1.1, y: -3 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex items-center justify-center transition-all duration-300"
+                >
+                  <Instagram size={20} style={{ color: safeStyles.color }} className="opacity-70 group-hover:opacity-100" />
+                </motion.a>
+                {/* Tooltip */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black/60 backdrop-blur-md rounded text-xs font-mono whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 border"
+                     style={{ color: safeStyles.color, borderColor: `${safeStyles.color}40`, boxShadow: `0 0 10px ${safeStyles.color}20` }}>
+                  Instagram
+                  {/* Flecha del tooltip */}
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-black/60 border-r border-b"
+                       style={{ borderColor: `${safeStyles.color}40` }}></div>
+                </div>
+              </motion.div>
+
+              {/* GitHub */}
+              <motion.div className="relative group">
+                <motion.a 
+                  href="https://github.com/luisjosuecortes" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ scale: 1.1, y: -3 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex items-center justify-center transition-all duration-300"
+                >
+                  <Github size={20} style={{ color: safeStyles.color }} className="opacity-70 group-hover:opacity-100" />
+                </motion.a>
+                {/* Tooltip */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black/60 backdrop-blur-md rounded text-xs font-mono whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 border"
+                     style={{ color: safeStyles.color, borderColor: `${safeStyles.color}40`, boxShadow: `0 0 10px ${safeStyles.color}20` }}>
+                  GitHub
+                  {/* Flecha del tooltip */}
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-black/60 border-r border-b"
+                       style={{ borderColor: `${safeStyles.color}40` }}></div>
+                </div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>

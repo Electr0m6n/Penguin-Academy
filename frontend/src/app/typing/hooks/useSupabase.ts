@@ -181,7 +181,7 @@ export function useSupabase() {
   const submitScoreAutomatically = useCallback(async (
     finalWpm: number, 
     finalAccuracy: number,
-    selectedTime: number,
+    selectedTime: number | string,
     textLength: number,
     correctChars: number,
     incorrectChars: number,
@@ -306,7 +306,7 @@ export function useSupabase() {
   const submitScore = useCallback(async (
     wpm: number | null,
     accuracy: number | null,
-    selectedTime: number,
+    selectedTime: number | string,
     textLength: number,
     correctChars: number,
     incorrectChars: number,

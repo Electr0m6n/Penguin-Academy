@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Line } from 'react-chartjs-2';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, CheckCircle2, TrendingUp, Timer } from 'lucide-react';
+import { Zap, CheckCircle2, TrendingUp, Timer, Pause } from 'lucide-react';
 import { useChartConfig } from './ChartOptions';
 import { WpmDataPoint, AccuracyDataPoint } from '../../types';
 import {
@@ -45,6 +45,8 @@ interface RealTimeChartProps {
   calculateCurrentWPM: () => number;
   calculateAccuracy: (text: string, targetText: string) => number;
   codeMode?: boolean;
+  isPaused?: boolean;
+  totalPausedTime?: number;
 }
 
 export const RealTimeChart: React.FC<RealTimeChartProps> = ({
@@ -58,7 +60,9 @@ export const RealTimeChart: React.FC<RealTimeChartProps> = ({
   targetText,
   calculateCurrentWPM,
   calculateAccuracy,
-  codeMode = false
+  codeMode = false,
+  isPaused = false,
+  totalPausedTime = 0
 }) => {
   const { getChartData, chartOptions } = useChartConfig({
     wpmHistory,
@@ -76,7 +80,8 @@ export const RealTimeChart: React.FC<RealTimeChartProps> = ({
     Math.round(accuracyHistory[accuracyHistory.length - 1].accuracy) : 
     (text.length > 0 ? Math.round(calculateAccuracy(text, targetText)) : 100);
     
-  const elapsedTime = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+  // Calcular tiempo ajustando por el tiempo pausado
+  const elapsedTime = startTime ? Math.floor((Date.now() - startTime - totalPausedTime) / 1000) : 0;
   
   const maxWpm = wpmHistory.length > 0 ? 
     Math.round(Math.max(...wpmHistory.map(entry => entry.wpm))) : 
@@ -198,8 +203,15 @@ export const RealTimeChart: React.FC<RealTimeChartProps> = ({
               <div className="text-xs uppercase tracking-wide font-mono opacity-70">
                 Tiempo
               </div>
-              <div className="text-lg font-bold font-mono" style={{ color: safeStyles.color }}>
+              <div className="text-lg font-bold font-mono flex items-center" style={{ color: safeStyles.color }}>
                 {elapsedTime}s
+                {isPaused && (
+                  <Pause 
+                    size={14} 
+                    className="ml-1 animate-pulse" 
+                    style={{ color: safeStyles.color }} 
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -245,9 +257,34 @@ export const RealTimeChart: React.FC<RealTimeChartProps> = ({
           />
         </div>
         
+        {/* Indicador de pausa */}
+        {isPaused && (
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[3px] flex items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, type: "spring" }}
+              className="px-6 py-4 rounded-xl border-2 flex flex-col items-center space-y-3"
+              style={{ 
+                borderColor: `${safeStyles.color}60`,
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                boxShadow: `0 0 20px ${safeStyles.color}40, inset 0 0 10px ${safeStyles.color}20`
+              }}
+            >
+              <Pause size={32} className="animate-pulse" style={{ color: safeStyles.color }} />
+              <span className="font-mono text-base font-bold" style={{ color: safeStyles.color }}>
+                Gráfica pausada
+              </span>
+              <span className="font-mono text-xs opacity-70">
+                Continúa escribiendo para reanudar
+              </span>
+            </motion.div>
+          </div>
+        )}
+        
         {/* Overlay de información */}
         <AnimatePresence mode="wait">
-          {showDetails && (
+          {showDetails && !isPaused && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
